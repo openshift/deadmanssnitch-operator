@@ -10,7 +10,9 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/pkg/apis"
 	"github.com/openshift/deadmanssnitch-operator/pkg/controller"
 
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+
+	//	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
@@ -59,11 +61,13 @@ func main() {
 
 	printVersion()
 
-	namespace, err := k8sutil.GetWatchNamespace()
-	if err != nil {
-		log.Error(err, "Failed to get watch namespace")
-		os.Exit(1)
-	}
+	/*
+		namespace, err := k8sutil.GetWatchNamespace()
+		if err != nil {
+			log.Error(err, "Failed to get watch namespace")
+			os.Exit(1)
+		}
+	*/
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
@@ -95,6 +99,12 @@ func main() {
 
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	// Setup hive scheme
+	if err := hivev1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
