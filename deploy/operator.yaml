@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deadmanssnitch-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: deadmanssnitch-operator
+  template:
+    metadata:
+      labels:
+        name: deadmanssnitch-operator
+    spec:
+      serviceAccountName: deadmanssnitch-operator
+      containers:
+        - name: deadmanssnitch-operator
+          # Replace this with the built image name
+          image: REPLACE_IMAGE
+          command:
+          - deadmanssnitch-operator
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "deadmanssnitch-operator"
