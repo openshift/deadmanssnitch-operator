@@ -6,9 +6,9 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
 
-	//	corev1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	//	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	//"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -109,6 +109,10 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
+	reqLogger.Info("Creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
+	newSS := newSyncSet(request.Namespace, request.Name)
+	r.client.Create(context.TODO(), newSS)
+
 	// Define a new Pod object
 	/*
 		pod := newPodForCR(instance)
@@ -138,6 +142,47 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	// Pod already exists - don't requeue
 	//reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
+
+}
+
+func newSyncSet(namespace string, name string) *hivev1alpha1.SyncSet {
+
+	newSS := &hivev1alpha1.SyncSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testSS",
+			Namespace: namespace,
+		},
+		Spec: hivev1alpha1.SyncSetSpec{
+			ClusterDeploymentRefs: []corev1.LocalObjectReference{
+				{
+					Name: name,
+				},
+			},
+			SyncSetCommonSpec: hivev1alpha1.SyncSetCommonSpec{
+				ResourceApplyMode: "upsert",
+				Resources: []runtime.RawExtension{
+					{
+						Object: &corev1.Secret{
+							Type: "Opaque",
+							TypeMeta: metav1.TypeMeta{
+								Kind:       "Secret",
+								APIVersion: "v1",
+							},
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "dms-secret",
+								Namespace: "openshift-am-config",
+							},
+							Data: map[string][]byte{
+								"API_KEY": []byte("FIXME: Get PD from vault then generate on API"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return newSS
 
 }
 
