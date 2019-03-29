@@ -46,7 +46,16 @@ func NewClient(authToken string) *Client {
 		authToken:  authToken,
 		BaseURL:    defaultURL(),
 		httpClient: http.DefaultClient,
-		//httpClient: newDefaultHTTPClient(),
+	}
+}
+
+// NewSnitch creates a new Snitch only requiring a few items
+func NewSnitch(name string, tags []string, interval string, alertType string) Snitch {
+	return Snitch{
+		Name:      name,
+		Tags:      tags,
+		Interval:  interval,
+		AlertType: alertType,
 	}
 }
 
@@ -174,7 +183,7 @@ func (c *Client) FindSnitchesByName(snitchName string) ([]Snitch, error) {
 	return foundSnitches, err
 }
 
-// Update
+// Update the snitch
 func (c *Client) Update(updateSnitch Snitch) (Snitch, error) {
 	var snitch Snitch
 	req, err := c.newRequest("PATCH", "/v1/snitches/"+updateSnitch.Token, updateSnitch)

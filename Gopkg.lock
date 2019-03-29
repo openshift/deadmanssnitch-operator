@@ -239,8 +239,20 @@
 [[projects]]
   branch = "master"
   name = "github.com/openshift/api"
-  packages = ["config/v1"]
+  packages = [
+    "config/v1",
+    "route/v1"
+  ]
   revision = "ad6339a9e4ce20fffe56b91dc9c9ee7a4d04ebd7"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/openshift/cluster-api"
+  packages = [
+    "pkg/apis/machine/common",
+    "pkg/apis/machine/v1beta1"
+  ]
+  revision = "3f8a02c5cc17c4bc15ad1ec8766769e3d65917d1"
 
 [[projects]]
   branch = "ovn-dev"
@@ -251,7 +263,10 @@
 [[projects]]
   branch = "master"
   name = "github.com/openshift/hive"
-  packages = ["pkg/apis/hive/v1alpha1"]
+  packages = [
+    "pkg/apis/hive/v1alpha1",
+    "pkg/controller/utils"
+  ]
   revision = "84ea1d824336aeef4a8cd0501e31e0af3f3b3cd8"
 
 [[projects]]
@@ -549,6 +564,7 @@
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
+    "pkg/apis/meta/v1/validation",
     "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
@@ -783,6 +799,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "052f877145a3663bee081d06f7b50e883b4690e2a417a42605559dbc35254c66"
+  inputs-digest = "1807b4cb4b4ef0c938305073c7702a4ad5640631d796abd21f6e1da727a99f31"
   solver-name = "gps-cdcl"
   solver-version = 1
