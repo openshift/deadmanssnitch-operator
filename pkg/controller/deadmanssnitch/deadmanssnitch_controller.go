@@ -125,7 +125,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		hivecontrollerutils.DeleteFinalizer(instance, "dms.manage.openshift.io/deadmanssnitch")
 		err = r.client.Update(context.TODO(), instance)
 		if err != nil {
-			reqLogger.Info("Error deleting Finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
+			reqLogger.Error(err, "Error deleting Finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, err
 		}
 
@@ -140,7 +140,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		hivecontrollerutils.AddFinalizer(instance, "dms.manage.openshift.io/deadmanssnitch")
 		err := r.client.Update(context.TODO(), instance)
 		if err != nil {
-			reqLogger.Info("Error setting Finalizer on ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
+			reqLogger.Error(err, "Error setting Finalizer on ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, err
 		}
 	}
@@ -153,8 +153,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 
 	if errors.IsNotFound(err) {
 		// create new DMS SyncSet
-		reqLogger.Info("SyncSet not found!", "Namespace", request.Namespace, "Name", request.Name)
-		reqLogger.Info("Creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
+		reqLogger.Info("SyncSet not found, Creating a new SynsSet", "Namespace", request.Namespace, "Name", request.Name)
 
 		snitches, err := r.dmsclient.FindSnitchesByName(request.Name)
 		if err != nil {
@@ -177,17 +176,17 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 
 		// ensure the syncset gets cleaned up when the clusterdeployment is deleted
 		if err := controllerutil.SetControllerReference(instance, newSS, r.scheme); err != nil {
-			reqLogger.Info("error setting controller reference on syncset", "Namespace", request.Namespace, "Name", request.Name)
+			reqLogger.Error(err, "Error setting controller reference on syncset", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, err
 		}
 		if err := r.client.Create(context.TODO(), newSS); err != nil {
-			reqLogger.Info("error creating syncset", "Namespace", request.Namespace, "Name", request.Name)
+			reqLogger.Error(err, "Error creating syncset", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, err
 		}
 
 		reqLogger.Info("Done creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
 	} else {
-		reqLogger.Info("Already Created, nothing to do here...", "Namespace", request.Namespace, "Name", request.Name)
+		reqLogger.Info("SyncSet Already Present, nothing to do here...", "Namespace", request.Namespace, "Name", request.Name)
 
 	}
 
@@ -220,7 +219,7 @@ func newSyncSet(namespace string, ssName string, snitchURL string) *hivev1alpha1
 							},
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "dms-secret",
-								Namespace: "openshift-am-config",
+								Namespace: "openshift-monitoring",
 							},
 							Data: map[string][]byte{
 								"SNITCH_URL": []byte(snitchURL),
