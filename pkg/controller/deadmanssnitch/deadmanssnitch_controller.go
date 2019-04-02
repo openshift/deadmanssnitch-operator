@@ -121,6 +121,25 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			reqLogger.Info("Deleted the DMS from api.deadmanssnicth.com", "Namespace", request.Namespace, "Name", request.Name)
 		}
 
+		// Just return if this is not a managed cluster
+		if val, ok := instance.Labels["managed"]; ok {
+			if val != "true" {
+				reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
+				return reconcile.Result{}, nil
+			}
+		} else {
+			// Managed tag is not present which implies it is not a managed cluster
+			reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
+			return reconcile.Result{}, nil
+		}
+
+		// cluster isn't installed yet, just return
+		if !instance.Status.Installed {
+			// Cluster isn't installed yet, return
+			reqLogger.Info("Cluster installation is not complete", "Namespace", request.Namespace, "Name", request.Name)
+			return reconcile.Result{}, nil
+		}
+
 		reqLogger.Info("Deleting DMS finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
 		hivecontrollerutils.DeleteFinalizer(instance, "dms.manage.openshift.io/deadmanssnitch")
 		err = r.client.Update(context.TODO(), instance)
