@@ -199,7 +199,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			}
 		}
 
-		newSS := newSyncSet(request.Namespace, ssName, snitch.Href)
+		newSS := newSyncSet(request.Namespace, ssName, snitch.CheckInURL)
 
 		// ensure the syncset gets cleaned up when the clusterdeployment is deleted
 		if err := controllerutil.SetControllerReference(instance, newSS, r.scheme); err != nil {

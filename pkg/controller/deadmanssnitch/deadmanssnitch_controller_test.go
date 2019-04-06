@@ -2,7 +2,8 @@ package deadmanssnitch
 
 import (
 	"context"
-	_ corev1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	hiveapis "github.com/openshift/hive/pkg/apis"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
@@ -58,6 +59,21 @@ func newSecretDecoder() runtime.Decoder {
 	return decoder
 }
 */
+
+// decode code to try to decode secret?  copied from somewhere to help..
+func decode(t *testing.T, data []byte) (runtime.Object, metav1.Object, error) {
+	decoder := scheme.Codecs.UniversalDecoder(corev1.SchemeGroupVersion)
+	r, _, err := decoder.Decode(data, nil, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	obj, err := meta.Accessor(r)
+	if err != nil {
+		return nil, nil, err
+	}
+	return r, obj, nil
+}
 
 func testClusterDeployment() *hivev1alpha1.ClusterDeployment {
 	cd := hivev1alpha1.ClusterDeployment{
