@@ -13,6 +13,16 @@ const (
 	apiEndpoint = "https://api.deadmanssnitch.com/v1"
 )
 
+// Client is a wrapper interface for the dmsClient to allow for easier testing
+type Client interface {
+	ListAll() ([]Snitch, error)
+	List(snitchToken string) (Snitch, error)
+	Create(newSnitch Snitch) (Snitch, error)
+	Delete(snitchToken string) (bool, error)
+	FindSnitchesByName(snitchName string) ([]Snitch, error)
+	Update(updateSnitch Snitch) (Snitch, error)
+}
+
 // Snitch Struct
 type Snitch struct {
 	Name        string   `json:"name"`
@@ -34,15 +44,15 @@ func defaultURL() *url.URL {
 }
 
 // Client wraps http client
-type Client struct {
+type dmsClient struct {
 	authToken  string
 	BaseURL    *url.URL
 	httpClient *http.Client
 }
 
 // NewClient creates an API client
-func NewClient(authToken string) *Client {
-	return &Client{
+func NewClient(authToken string) Client {
+	return &dmsClient{
 		authToken:  authToken,
 		BaseURL:    defaultURL(),
 		httpClient: http.DefaultClient,
@@ -59,7 +69,7 @@ func NewSnitch(name string, tags []string, interval string, alertType string) Sn
 	}
 }
 
-func (c *Client) newRequest(method, path string, body interface{}) (*http.Request, error) {
+func (c *dmsClient) newRequest(method, path string, body interface{}) (*http.Request, error) {
 	rel := &url.URL{Path: path}
 	u := c.BaseURL.ResolveReference(rel)
 	var buf io.ReadWriter
@@ -84,7 +94,7 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 	return req, nil
 }
 
-func (c *Client) do(req *http.Request) (*http.Response, error) {
+func (c *dmsClient) do(req *http.Request) (*http.Response, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return resp, fmt.Errorf("Error calling the API endpoint: %v", err)
@@ -94,7 +104,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 }
 
 // ListAll snitches
-func (c *Client) ListAll() ([]Snitch, error) {
+func (c *dmsClient) ListAll() ([]Snitch, error) {
 	req, err := c.newRequest("GET", "/v1/snitches", nil)
 	if err != nil {
 		return nil, err
@@ -111,7 +121,7 @@ func (c *Client) ListAll() ([]Snitch, error) {
 }
 
 //List a single snitch
-func (c *Client) List(snitchToken string) (Snitch, error) {
+func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 	var snitch Snitch
 
 	req, err := c.newRequest("GET", "/v1/snitches/"+snitchToken, nil)
@@ -130,7 +140,7 @@ func (c *Client) List(snitchToken string) (Snitch, error) {
 }
 
 // Create a snitch
-func (c *Client) Create(newSnitch Snitch) (Snitch, error) {
+func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 	var snitch Snitch
 	req, err := c.newRequest("POST", "/v1/snitches", newSnitch)
 	if err != nil {
@@ -148,7 +158,7 @@ func (c *Client) Create(newSnitch Snitch) (Snitch, error) {
 }
 
 // Delete a snitch
-func (c *Client) Delete(snitchToken string) (bool, error) {
+func (c *dmsClient) Delete(snitchToken string) (bool, error) {
 	req, err := c.newRequest("DELETE", "/v1/snitches/"+snitchToken, nil)
 	if err != nil {
 		return false, err
@@ -167,7 +177,7 @@ func (c *Client) Delete(snitchToken string) (bool, error) {
 
 // FindSnitchesByName This will search for snitches using a name. This
 // could return multiple snitches, as the same name may be used multiple times
-func (c *Client) FindSnitchesByName(snitchName string) ([]Snitch, error) {
+func (c *dmsClient) FindSnitchesByName(snitchName string) ([]Snitch, error) {
 	var foundSnitches []Snitch
 	listedSnitches, err := c.ListAll()
 	if err != nil {
@@ -184,7 +194,7 @@ func (c *Client) FindSnitchesByName(snitchName string) ([]Snitch, error) {
 }
 
 // Update the snitch
-func (c *Client) Update(updateSnitch Snitch) (Snitch, error) {
+func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 	var snitch Snitch
 	req, err := c.newRequest("PATCH", "/v1/snitches/"+updateSnitch.Token, updateSnitch)
 	if err != nil {

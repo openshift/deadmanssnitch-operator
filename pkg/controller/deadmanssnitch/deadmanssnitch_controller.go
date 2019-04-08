@@ -83,7 +83,7 @@ type ReconcileDeadMansSnitch struct {
 	// that reads objects from the cache and writes to the apiserver
 	client    client.Client
 	scheme    *runtime.Scheme
-	dmsclient *dmsclient.Client
+	dmsclient dmsclient.Client
 }
 
 // Reconcile reads that state of the cluster for a DeadMansSnitch object and makes changes based on the state read
