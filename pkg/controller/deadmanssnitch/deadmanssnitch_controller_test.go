@@ -2,8 +2,16 @@ package deadmanssnitch
 
 import (
 	"context"
+	"github.com/golang/mock/gomock"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"testing"
+
+	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
+	mockdms "github.com/openshift/deadmanssnitch-operator/pkg/dmsclient/mock"
 
 	hiveapis "github.com/openshift/hive/pkg/apis"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
@@ -11,9 +19,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
 
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -21,44 +28,46 @@ import (
 const (
 	testClusterName = "testCluster"
 	testNamespace   = "testNamespace"
+	testSnitchURL   = "https://deadmanssnitch.com/12345"
 )
 
 type SyncSetEntry struct {
 	name      string
 	snitchURL string
 }
-
-/*
-func rawToIngressControllers(rawList []runtime.RawExtension) []*ingresscontroller.IngressController {
-	decoder := newIngressControllerDecoder()
-	ingressControllers := []*ingresscontroller.IngressController{}
-
-	for _, raw := range rawList {
-		obj, _, err := decoder.Decode(raw.Raw, nil, &ingresscontroller.IngressController{})
-		if err != nil {
-			panic("error decoding to ingresscontroller object")
-		}
-		ic, ok := obj.(*ingresscontroller.IngressController)
-		if !ok {
-			panic("error casting to IngressController")
-		}
-		ingressControllers = append(ingressControllers, ic)
-	}
-	return ingressControllers
+type mocks struct {
+	fakeKubeClient client.Client
+	mockCtrl       *gomock.Controller
+	mockDMSClient  *mockdms.MockClient
 }
 
-// figure out how to unpack the secret
-func newSecretDecoder() runtime.Decoder {
-	scheme, err := corev1.SchemeBuilder.  hivev1.SchemeBuilder.Build()
+// setupDefaultMocks is an easy way to setup all of the default mocks
+func setupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
+	mocks := &mocks{
+		fakeKubeClient: fakekubeclient.NewFakeClient(localObjects...),
+		mockCtrl:       gomock.NewController(t),
+	}
+
+	mocks.mockDMSClient = mockdms.NewMockClient(mocks.mockCtrl)
+
+	return mocks
+}
+
+func rawToSecret(raw runtime.RawExtension) *corev1.Secret {
+	decoder := scheme.Codecs.UniversalDecoder(corev1.SchemeGroupVersion)
+
+	obj, _, err := decoder.Decode(raw.Raw, nil, nil)
 	if err != nil {
-		panic("error building ingresscontroller scheme")
+		// okay, not everything in the syncset is necessarily a secret
+		return nil
 	}
-	codecFactory := serializer.NewCodecFactory(scheme)
-	decoder := codecFactory.UniversalDecoder(hivev1.SchemeGroupVersion)
+	s, ok := obj.(*corev1.Secret)
+	if ok {
+		return s
+	}
 
-	return decoder
+	return nil
 }
-*/
 
 // decode code to try to decode secret?  copied from somewhere to help..
 func decode(t *testing.T, data []byte) (runtime.Object, metav1.Object, error) {
@@ -94,44 +103,79 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		name             string
 		localObjects     []runtime.Object
 		expectedSyncSets *SyncSetEntry
+		verifySyncSets   func(client.Client, *SyncSetEntry) bool
+		setupDMSMock     func(*mockdms.MockClientMockRecorder)
 	}{
 
 		{
-			name: "MyFirstTest",
+			name: "Test Creating",
 			localObjects: []runtime.Object{
 				testClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{
 				name:      testClusterName + "-dms",
-				snitchURL: "abcd",
+				snitchURL: testSnitchURL,
+			},
+			verifySyncSets: verifySyncSetExists,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
 			},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fakeclient := fake.NewFakeClient(test.localObjects...)
+			// ARRANGE
+			mocks := setupDefaultMocks(t, test.localObjects)
+			test.setupDMSMock(mocks.mockDMSClient.EXPECT())
+
+			// This is necessary for the mocks to report failures like methods not being called an expected number of times.
+			// after mocks is defined
+			defer mocks.mockCtrl.Finish()
+
 			rdms := &ReconcileDeadMansSnitch{
-				client: fakeclient,
-				scheme: scheme.Scheme,
+				client:    mocks.fakeKubeClient,
+				scheme:    scheme.Scheme,
+				dmsclient: mocks.mockDMSClient,
 			}
+
+			// ACT
 			_, err := rdms.Reconcile(reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      testClusterName,
 					Namespace: testNamespace,
 				},
 			})
+			// ASSERT
+			//assert.Equal(t, test.expectedGetError, getErr)
+
 			assert.NoError(t, err, "Unexpected Error")
-			if test.expectedSyncSets != nil {
-				ss := hivev1alpha1.SyncSet{}
-				assert.NoError(t, fakeclient.Get(context.TODO(),
-					types.NamespacedName{Name: test.expectedSyncSets.name, Namespace: testNamespace},
-					&ss))
-				// validate syncset
-				assert.Equal(t, test.expectedSyncSets.snitchURL, ss.Spec)
-			}
+			assert.True(t, test.verifySyncSets(mocks.fakeKubeClient, test.expectedSyncSets))
 		})
 
 	}
 
+}
+
+func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
+	ss := hivev1alpha1.SyncSet{}
+	err := c.Get(context.TODO(),
+		types.NamespacedName{Name: expected.name, Namespace: testNamespace},
+		&ss)
+
+	if err != nil {
+		return false
+	}
+
+	if expected.name != ss.Name {
+		return false
+	}
+
+	secret := rawToSecret(ss.Spec.Resources[0])
+	if secret == nil {
+		return false
+	}
+
+	return string(secret.Data["SNITCH_URL"]) == expected.snitchURL
 }
