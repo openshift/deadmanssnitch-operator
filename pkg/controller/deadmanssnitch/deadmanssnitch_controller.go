@@ -109,18 +109,18 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	/*
-		// Just return if this is not a managed cluster
-		if val, ok := instance.Labels["managed"]; ok {
-			if val != "true" {
-				reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
-				return reconcile.Result{}, nil
-			}
-		} else {
-			// Managed tag is not present which implies it is not a managed cluster
+	// Just return if this is not a managed cluster
+	if val, ok := instance.Labels["managed"]; ok {
+		if val != "true" {
 			reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, nil
 		}
+	} else {
+		// Managed tag is not present which implies it is not a managed cluster
+		reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
+		return reconcile.Result{}, nil
+	}
+	/*
 
 		// cluster isn't installed yet, just return
 		if !instance.Status.Installed {

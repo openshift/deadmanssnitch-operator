@@ -3,6 +3,7 @@ package deadmanssnitch
 import (
 	"context"
 	"github.com/golang/mock/gomock"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -29,6 +30,7 @@ const (
 	testClusterName = "testCluster"
 	testNamespace   = "testNamespace"
 	testSnitchURL   = "https://deadmanssnitch.com/12345"
+	testSnitchToken = "abcdefg"
 )
 
 type SyncSetEntry struct {
@@ -84,11 +86,14 @@ func decode(t *testing.T, data []byte) (runtime.Object, metav1.Object, error) {
 	return r, obj, nil
 }
 
+// return a simple test ClusterDeployment
 func testClusterDeployment() *hivev1alpha1.ClusterDeployment {
+	labelMap := map[string]string{"managed": "true"}
 	cd := hivev1alpha1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testClusterName,
 			Namespace: testNamespace,
+			Labels:    labelMap,
 		},
 		Spec: hivev1alpha1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
@@ -97,6 +102,16 @@ func testClusterDeployment() *hivev1alpha1.ClusterDeployment {
 
 	return &cd
 }
+
+// return a deleted ClusterDeployment
+func deletedClusterDeployment() *hivev1alpha1.ClusterDeployment {
+	cd := testClusterDeployment()
+	now := metav1.Now()
+	cd.DeletionTimestamp = &now
+
+	return cd
+}
+
 func TestReconcileClusterDeployment(t *testing.T) {
 	hiveapis.AddToScheme(scheme.Scheme)
 	tests := []struct {
@@ -120,6 +135,20 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL}, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
+			},
+		},
+		{
+			name: "Test Deleting",
+			localObjects: []runtime.Object{
+				deletedClusterDeployment(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			verifySyncSets:   verifySyncSetDeleted,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Delete(gomock.Any()).Return(true, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{Token: testSnitchToken},
+				}, nil).Times(1)
 			},
 		},
 	}
@@ -147,6 +176,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 					Namespace: testNamespace,
 				},
 			})
+
 			// ASSERT
 			//assert.Equal(t, test.expectedGetError, getErr)
 
@@ -178,4 +208,16 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	}
 
 	return string(secret.Data["SNITCH_URL"]) == expected.snitchURL
+}
+
+func verifySyncSetDeleted(c client.Client, expected *SyncSetEntry) bool {
+	ss := hivev1alpha1.SyncSet{}
+	err := c.Get(context.TODO(),
+		types.NamespacedName{Name: expected.name, Namespace: testNamespace},
+		&ss)
+
+	if errors.IsNotFound(err) {
+		return true
+	}
+	return false
 }
