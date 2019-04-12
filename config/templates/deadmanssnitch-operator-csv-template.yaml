@@ -1,13 +1,13 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: aws-account-operator-0.0.1
+  name: deadmanssnitch-operator-0.0.1
   namespace: placeholder
   annotations:
     categories: A list of comma separated categories that your operator falls under.
     certified: "false"
-    description: Dead Mans Snitch Operator. 
-    containerImage: quay.io/app-sre/aws-account-operator:latest
+    description: Dead Mans Snitch Operator. This operator manages Deadmansnicthes for OSD Clusters.
+    containerImage: quay.io/app-sre/deadmanssnitch-operator:latest
     createdAt: "2019-04-10T17:34:33Z"
     support: Matt Woodson
 spec:
