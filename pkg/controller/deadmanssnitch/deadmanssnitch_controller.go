@@ -26,6 +26,15 @@ const (
 	// DeadMansSnitchFinalizer is used on ClusterDeployments to ensure we run a successful deprovision
 	// job before cleaning up the API object.
 	DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch"
+	// DeadMansSnitchOperatorNamespace is the namespace where this operator will run
+	DeadMansSnitchOperatorNamespace string = "deadmanssnitch-operator"
+	// DeadMansSnitchAPISecret is the secret where to fetch the DMS API Key
+	DeadMansSnitchAPISecret string = "deadmanssnitch-api-key"
+	// DeadMansSnitchAPISecretKey is the secret where to fetch the DMS API Key
+	DeadMansSnitchAPISecretKey string = "deadmanssnitch-api-key"
+	// ClusterDeploymentManagedLabel is the label the clusterdeployment will have that determines
+	// if the cluster is OSD (managed) or now
+	ClusterDeploymentManagedLabel string = "api.openshift.com/managed"
 )
 
 var log = logf.Log.WithName("controller_deadmanssnitch")
@@ -33,17 +42,36 @@ var log = logf.Log.WithName("controller_deadmanssnitch")
 // Add creates a new DeadMansSnitch Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	newRec, err := newReconciler(mgr)
+	if err != nil {
+		return err
+	}
+
+	return add(mgr, newRec)
+	//return add(mgr, newReconciler(mgr))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
+
+	// Regular manager client is not fully initialized here, create our own for some
+	// initialization API communication:
+	tempClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
+	if err != nil {
+		return nil, err
+	}
+
 	// get dms key
-	dmsAPIKey := "CHANGEME"
+	dmsAPIKey, err := getDmsAPIKey(tempClient)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ReconcileDeadMansSnitch{
+		//client:    mgr.GetClient(),
 		client:    mgr.GetClient(),
 		scheme:    mgr.GetScheme(),
-		dmsclient: dmsclient.NewClient(dmsAPIKey)}
+		dmsclient: dmsclient.NewClient(dmsAPIKey)}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -110,7 +138,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Just return if this is not a managed cluster
-	if val, ok := instance.Labels["managed"]; ok {
+	if val, ok := instance.Labels[ClusterDeploymentManagedLabel]; ok {
 		if val != "true" {
 			reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, nil
@@ -177,7 +205,6 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	err = r.client.Get(context.TODO(),
 		types.NamespacedName{Name: ssName, Namespace: request.Namespace},
 		&hivev1alpha1.SyncSet{})
-
 	if errors.IsNotFound(err) {
 		// create new DMS SyncSet
 		reqLogger.Info("SyncSet not found, Creating a new SynsSet", "Namespace", request.Namespace, "Name", request.Name)
@@ -261,3 +288,49 @@ func newSyncSet(namespace string, ssName string, snitchURL string) *hivev1alpha1
 	return newSS
 
 }
+
+func getDmsAPIKey(osc client.Client) (string, error) {
+	dmsSecret := &corev1.Secret{}
+
+	err := osc.Get(context.TODO(),
+		types.NamespacedName{Namespace: DeadMansSnitchOperatorNamespace,
+			Name: DeadMansSnitchAPISecret},
+		dmsSecret)
+	if err != nil {
+		return "", err
+	}
+
+	dmsAPIKey := string(dmsSecret.Data[DeadMansSnitchAPISecretKey])
+	if err != nil {
+		return "", err
+	}
+
+	return dmsAPIKey, nil
+}
+
+/*
+// getDMSClient returns a dmsclient.  It assumes that there is a secret is in the
+// deadmanssnitch-operator namespace and it is named 'deadmanssnitch-api-key'
+func getDMSClient(osc client.Client) (dmsclient.Client, error) {
+	dmsSecret := &corev1.Secret{}
+
+	err := osc.Get(context.TODO(),
+		types.NamespacedName{Namespace: DeadMansSnitchOperatorNamespace,
+			Name: DeadMansSnitchAPISecret},
+		dmsSecret)
+
+	if err != nil {
+		return nil, err
+	}
+
+	dmsAPIKey := string(dmsSecret.Data[DeadMansSnitchAPISecretKey])
+	if err != nil {
+		return nil, err
+	}
+
+	dmsClient := dmsclient.NewClient(dmsAPIKey)
+
+	return dmsClient, nil
+}
+
+*/

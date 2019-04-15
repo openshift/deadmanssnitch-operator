@@ -88,7 +88,7 @@ func decode(t *testing.T, data []byte) (runtime.Object, metav1.Object, error) {
 
 // return a simple test ClusterDeployment
 func testClusterDeployment() *hivev1alpha1.ClusterDeployment {
-	labelMap := map[string]string{"managed": "true"}
+	labelMap := map[string]string{ClusterDeploymentManagedLabel: "true"}
 	cd := hivev1alpha1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testClusterName,
