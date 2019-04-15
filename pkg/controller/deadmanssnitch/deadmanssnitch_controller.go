@@ -307,30 +307,3 @@ func getDmsAPIKey(osc client.Client) (string, error) {
 
 	return dmsAPIKey, nil
 }
-
-/*
-// getDMSClient returns a dmsclient.  It assumes that there is a secret is in the
-// deadmanssnitch-operator namespace and it is named 'deadmanssnitch-api-key'
-func getDMSClient(osc client.Client) (dmsclient.Client, error) {
-	dmsSecret := &corev1.Secret{}
-
-	err := osc.Get(context.TODO(),
-		types.NamespacedName{Namespace: DeadMansSnitchOperatorNamespace,
-			Name: DeadMansSnitchAPISecret},
-		dmsSecret)
-
-	if err != nil {
-		return nil, err
-	}
-
-	dmsAPIKey := string(dmsSecret.Data[DeadMansSnitchAPISecretKey])
-	if err != nil {
-		return nil, err
-	}
-
-	dmsClient := dmsclient.NewClient(dmsAPIKey)
-
-	return dmsClient, nil
-}
-
-*/
