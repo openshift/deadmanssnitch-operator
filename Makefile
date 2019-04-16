@@ -1,4 +1,4 @@
-SHELL := /usr/bin/env bash -x
+SHELL := /usr/bin/env bash
 OPERATOR_DOCKERFILE = build/Dockerfile
 
 # Include shared Makefiles
