@@ -1,45 +1,26 @@
+SHELL := /usr/bin/env bash -x
+OPERATOR_DOCKERFILE = build/Dockerfile
+
+# Include shared Makefiles
+include project.mk
+include standard.mk
+
+default: gobuild
+
+# Extend Makefile after here
+
 BINDIR = bin
 SRC_DIRS = pkg
 GOFILES = $(shell find $(SRC_DIRS) -name '*.go' | grep -v bindata)
 
-BUILD_CMD ?= docker build
-
-DOCKER_CMD ?= docker
+# Look up distro name (e.g. Fedora)
+DISTRO ?= $(shell if which lsb_release &> /dev/null; then lsb_release -si; else echo "Unknown"; fi)
 
 # Image URL to use all building/pushing image targets
 IMG ?= deadmanssnitch-operator:latest
 
-# Look up distro name (e.g. Fedora)
-DISTRO ?= $(shell if which lsb_release &> /dev/null; then lsb_release -si; else echo "Unknown"; fi)
-
-OPERATOR_NAME = deadmanssnitch-operator
-
-BINFILE=build/_output/bin/$(OPERATOR_NAME)
-MAINPACKAGE=./cmd/manager
-GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
-GOFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
-
-TESTTARGETS := $(shell go list -e ./... | egrep -v "/(vendor)/")
-TESTOPTS := 
-
-default: gobuild
-
-.PHONY: clean
-clean:
-	rm -rf ./build/_output
-
-.PHONY: gotest
-gotest:
-	go test $(TESTOPTS) $(TESTTARGETS)
-
-.PHONY: gocheck
-gocheck: ## Lint code
-	gofmt -s -l $(shell go list -f '{{ .Dir }}' ./... ) | grep ".*\.go"; if [ "$$?" = "0" ]; then gofmt -s -d $(shell go list -f '{{ .Dir }}' ./... ); exit 1; fi
-	go vet ./cmd/... ./pkg/...
-
-.PHONY: gobuild
-gobuild: gocheck gotest ## Build binary
-	${GOENV} go build ${GOFLAGS} -o ${BINFILE} ${MAINPACKAGE}
+BUILD_CMD ?= docker build
+DOCKER_CMD ?= docker
 
 # Build the docker image
 .PHONY: docker-build
