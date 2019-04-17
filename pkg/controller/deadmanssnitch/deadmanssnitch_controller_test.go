@@ -99,6 +99,7 @@ func testClusterDeployment() *hivev1alpha1.ClusterDeployment {
 			ClusterName: testClusterName,
 		},
 	}
+	cd.Status.Installed = true
 
 	return &cd
 }
