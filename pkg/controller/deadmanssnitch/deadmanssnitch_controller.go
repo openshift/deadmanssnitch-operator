@@ -217,7 +217,8 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			snitch = snitches[0]
 		} else {
 			tags := []string{"production"}
-			newSnitch := dmsclient.NewSnitch(request.Name, tags, "daily", "basic")
+			sntichName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
+			newSnitch := dmsclient.NewSnitch(sntichName, tags, "daily", "basic")
 			snitch, err = r.dmsclient.Create(newSnitch)
 			if err != nil {
 				return reconcile.Result{}, err
