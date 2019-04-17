@@ -37,3 +37,28 @@ rules:
   verbs:
   - "get"
   - "create"
+- apiGroups:
+  - hive.openshift.io
+  attributeRestrictions: null
+  resources:
+  - clusterdeployments
+  - clusterdeployments/finalizers
+  - clusterdeployments/status
+  - syncsets
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - hive.openshift.io
+  attributeRestrictions: null
+  resources:
+  - syncsets
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - watch
