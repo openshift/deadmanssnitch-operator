@@ -224,7 +224,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			}
 		}
 
-		newSS := newSyncSet(request.Namespace, ssName, snitch.CheckInURL)
+		newSS := newSyncSet(request.Namespace, request.Name, snitch.CheckInURL)
 
 		// ensure the syncset gets cleaned up when the clusterdeployment is deleted
 		if err := controllerutil.SetControllerReference(instance, newSS, r.scheme); err != nil {
@@ -246,17 +246,17 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 
 }
 
-func newSyncSet(namespace string, ssName string, snitchURL string) *hivev1alpha1.SyncSet {
+func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string) *hivev1alpha1.SyncSet {
 
 	newSS := &hivev1alpha1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ssName,
+			Name:      clusterDeploymentName + "-dms",
 			Namespace: namespace,
 		},
 		Spec: hivev1alpha1.SyncSetSpec{
 			ClusterDeploymentRefs: []corev1.LocalObjectReference{
 				{
-					Name: ssName,
+					Name: clusterDeploymentName,
 				},
 			},
 			SyncSetCommonSpec: hivev1alpha1.SyncSetCommonSpec{
