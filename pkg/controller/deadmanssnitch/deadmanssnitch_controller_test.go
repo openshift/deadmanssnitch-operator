@@ -113,6 +113,14 @@ func deletedClusterDeployment() *hivev1alpha1.ClusterDeployment {
 	return cd
 }
 
+// return a ClusterDeployment with Status.installed == false
+func uninstalledClusterDeployment() *hivev1alpha1.ClusterDeployment {
+	cd := testClusterDeployment()
+	cd.Status.Installed = false
+
+	return cd
+}
+
 func TestReconcileClusterDeployment(t *testing.T) {
 	hiveapis.AddToScheme(scheme.Scheme)
 	tests := []struct {
@@ -144,12 +152,22 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				deletedClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
-			verifySyncSets:   verifySyncSetDeleted,
+			verifySyncSets:   verifyNoSyncSet,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 				r.Delete(gomock.Any()).Return(true, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
 					{Token: testSnitchToken},
 				}, nil).Times(1)
+			},
+		},
+		{
+			name: "Test ClusterDeployment Status.Installed == false",
+			localObjects: []runtime.Object{
+				uninstalledClusterDeployment(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 			},
 		},
 	}
@@ -211,7 +229,7 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	return string(secret.Data["SNITCH_URL"]) == expected.snitchURL
 }
 
-func verifySyncSetDeleted(c client.Client, expected *SyncSetEntry) bool {
+func verifyNoSyncSet(c client.Client, expected *SyncSetEntry) bool {
 	ss := hivev1alpha1.SyncSet{}
 	err := c.Get(context.TODO(),
 		types.NamespacedName{Name: expected.name, Namespace: testNamespace},
