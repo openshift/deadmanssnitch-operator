@@ -6,7 +6,7 @@ subjects:
 - kind: ServiceAccount
   name: deadmanssnitch-operator
   # Replace this with the namespace the operator is deployed in.
-  namespace: openshift-deadmanssnitch
+  namespace: deadmanssnitch-operator
 roleRef:
   kind: ClusterRole
   name: deadmanssnitch-operator
