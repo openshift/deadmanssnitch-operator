@@ -148,15 +148,13 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
 		return reconcile.Result{}, nil
 	}
-	/*
 
-		// cluster isn't installed yet, just return
-		if !instance.Status.Installed {
-			// Cluster isn't installed yet, return
-			reqLogger.Info("Cluster installation is not complete", "Namespace", request.Namespace, "Name", request.Name)
-			return reconcile.Result{}, nil
-		}
-	*/
+	// cluster isn't installed yet, just return
+	if !instance.Status.Installed {
+		// Cluster isn't installed yet, return
+		reqLogger.Info("Cluster installation is not complete, returning...", "Namespace", request.Namespace, "Name", request.Name)
+		return reconcile.Result{}, nil
+	}
 
 	reqLogger.Info("Checking to see if CD is deleted", "Namespace", request.Namespace, "Name", request.Name)
 	// Check to see if the ClusterDeployment is deleted
