@@ -121,6 +121,24 @@ func uninstalledClusterDeployment() *hivev1alpha1.ClusterDeployment {
 	return cd
 }
 
+// return a ClusterDeployment with Label["managed"] == false
+func nonManagedtClusterDeployment() *hivev1alpha1.ClusterDeployment {
+	labelMap := map[string]string{ClusterDeploymentManagedLabel: "false"}
+	cd := hivev1alpha1.ClusterDeployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName,
+			Namespace: testNamespace,
+			Labels:    labelMap,
+		},
+		Spec: hivev1alpha1.ClusterDeploymentSpec{
+			ClusterName: testClusterName,
+		},
+	}
+	cd.Status.Installed = true
+
+	return &cd
+}
+
 func TestReconcileClusterDeployment(t *testing.T) {
 	hiveapis.AddToScheme(scheme.Scheme)
 	tests := []struct {
@@ -164,6 +182,16 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			name: "Test ClusterDeployment Status.Installed == false",
 			localObjects: []runtime.Object{
 				uninstalledClusterDeployment(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+			},
+		},
+		{
+			name: "Test Non managed ClusterDeployment",
+			localObjects: []runtime.Object{
+				nonManagedtClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
 			verifySyncSets:   verifyNoSyncSet,
