@@ -260,7 +260,7 @@ func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string
 				},
 			},
 			SyncSetCommonSpec: hivev1alpha1.SyncSetCommonSpec{
-				ResourceApplyMode: "upsert",
+				ResourceApplyMode: "sync",
 				Resources: []runtime.RawExtension{
 					{
 						Object: &corev1.Secret{
