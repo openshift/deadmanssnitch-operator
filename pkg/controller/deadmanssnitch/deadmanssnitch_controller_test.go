@@ -34,8 +34,9 @@ const (
 )
 
 type SyncSetEntry struct {
-	name      string
-	snitchURL string
+	name                     string
+	snitchURL                string
+	clusterDeploymentRefName string
 }
 type mocks struct {
 	fakeKubeClient client.Client
@@ -155,8 +156,9 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				testClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{
-				name:      testClusterName + "-dms",
-				snitchURL: testSnitchURL,
+				name:                     testClusterName + "-dms",
+				snitchURL:                testSnitchURL,
+				clusterDeploymentRefName: testClusterName,
 			},
 			verifySyncSets: verifySyncSetExists,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
@@ -249,6 +251,9 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 		return false
 	}
 
+	if expected.clusterDeploymentRefName != ss.Spec.ClusterDeploymentRefs[0].Name {
+		return false
+	}
 	secret := rawToSecret(ss.Spec.Resources[0])
 	if secret == nil {
 		return false
