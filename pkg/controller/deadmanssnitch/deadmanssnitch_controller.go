@@ -28,10 +28,12 @@ const (
 	DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch"
 	// DeadMansSnitchOperatorNamespace is the namespace where this operator will run
 	DeadMansSnitchOperatorNamespace string = "deadmanssnitch-operator"
-	// DeadMansSnitchAPISecret is the secret where to fetch the DMS API Key
-	DeadMansSnitchAPISecret string = "deadmanssnitch-api-key"
+	// DeadMansSnitchAPISecretName is the secret Name where to fetch the DMS API Key
+	DeadMansSnitchAPISecretName string = "deadmanssnitch-api-key"
 	// DeadMansSnitchAPISecretKey is the secret where to fetch the DMS API Key
 	DeadMansSnitchAPISecretKey string = "deadmanssnitch-api-key"
+	// DeadMansSnitchTagKey is the secret where to fetch the DMS API Key
+	DeadMansSnitchTagKey string = "hive-cluster-tag"
 	// ClusterDeploymentManagedLabel is the label the clusterdeployment will have that determines
 	// if the cluster is OSD (managed) or now
 	ClusterDeploymentManagedLabel string = "api.openshift.com/managed"
@@ -62,7 +64,8 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 	}
 
 	// get dms key
-	dmsAPIKey, err := getDmsAPIKey(tempClient)
+	dmsAPIKey, err := hivecontrollerutils.LoadSecretData(tempClient, DeadMansSnitchAPISecretName,
+		DeadMansSnitchOperatorNamespace, DeadMansSnitchAPISecretKey)
 	if err != nil {
 		return nil, err
 	}
@@ -155,13 +158,13 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Info("Cluster installation is not complete, returning...", "Namespace", request.Namespace, "Name", request.Name)
 		return reconcile.Result{}, nil
 	}
-
 	reqLogger.Info("Checking to see if CD is deleted", "Namespace", request.Namespace, "Name", request.Name)
 	// Check to see if the ClusterDeployment is deleted
 	if instance.DeletionTimestamp != nil {
 		// Delete the dms
 		reqLogger.Info("Deleting the DMS from api.deadmanssnicth.com", "Namespace", request.Namespace, "Name", request.Name)
-		snitches, err := r.dmsclient.FindSnitchesByName(request.Name)
+		snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
+		snitches, err := r.dmsclient.FindSnitchesByName(snitchName)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -216,9 +219,15 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		if len(snitches) > 0 {
 			snitch = snitches[0]
 		} else {
-			tags := []string{"production"}
-			sntichName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
-			newSnitch := dmsclient.NewSnitch(sntichName, tags, "daily", "basic")
+			hiveClusterTag, err := hivecontrollerutils.LoadSecretData(r.client, DeadMansSnitchAPISecretName,
+				DeadMansSnitchOperatorNamespace, DeadMansSnitchTagKey)
+			if err != nil {
+				reqLogger.Error(err, "Unable to retrieve the hive-cluster-tag from the secret", "Namespace", request.Namespace, "Name", request.Name)
+				return reconcile.Result{}, err
+			}
+			tags := []string{hiveClusterTag}
+			snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
+			newSnitch := dmsclient.NewSnitch(snitchName, tags, "daily", "basic")
 			snitch, err = r.dmsclient.Create(newSnitch)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -286,23 +295,4 @@ func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string
 
 	return newSS
 
-}
-
-func getDmsAPIKey(osc client.Client) (string, error) {
-	dmsSecret := &corev1.Secret{}
-
-	err := osc.Get(context.TODO(),
-		types.NamespacedName{Namespace: DeadMansSnitchOperatorNamespace,
-			Name: DeadMansSnitchAPISecret},
-		dmsSecret)
-	if err != nil {
-		return "", err
-	}
-
-	dmsAPIKey := string(dmsSecret.Data[DeadMansSnitchAPISecretKey])
-	if err != nil {
-		return "", err
-	}
-
-	return dmsAPIKey, nil
 }

@@ -20,6 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"time"
+
 	openshiftapiv1 "github.com/openshift/api/config/v1"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
 	log "github.com/sirupsen/logrus"
@@ -29,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -70,7 +72,7 @@ func NewReconciler(mgr manager.Manager) reconcile.Reconciler {
 // +kubebuilder:rbac:groups=hive.openshift.io,resources=clusterdeployments,verbs=get;list;watch
 func AddToManager(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New(controllerName+"-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(controllerName+"-controller", mgr, controller.Options{Reconciler: r, MaxConcurrentReconciles: 100})
 	if err != nil {
 		return err
 	}
@@ -175,9 +177,15 @@ type identityProviderPatchSpec struct {
 // +kubebuilder:rbac:groups=hive.openshift.io,resources=clusterdeployments,verbs=get;list;watch
 // +kubebuilder:rbac:groups=hive.openshift.io,resources=syncsets,verbs=get;create;update;delete;patch;list;watch
 func (r *ReconcileSyncIdentityProviders) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	start := time.Now()
 	contextLogger := addReconcileRequestLoggerFields(r.logger, request)
 
-	contextLogger.Debug("Starting Reconciliation Loop")
+	// For logging, we need to see when the reconciliation loop starts and ends.
+	contextLogger.Info("reconciling syncidentityproviders and clusterdeployments")
+	defer func() {
+		dur := time.Since(start)
+		contextLogger.WithField("elapsed", dur).Info("reconcile complete")
+	}()
 
 	// Fetch the ClusterDeployment instance
 	cd := &hivev1.ClusterDeployment{}
@@ -224,7 +232,7 @@ func (r *ReconcileSyncIdentityProviders) createSyncSetSpec(cd *hivev1.ClusterDep
 					Kind:       oauthKind,
 					Name:       oauthObjectName,
 					PatchType:  types.MergePatchType,
-					Patch:      patch,
+					Patch:      string(patch),
 				},
 			},
 		},

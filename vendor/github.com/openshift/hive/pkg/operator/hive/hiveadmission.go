@@ -17,12 +17,14 @@ limitations under the License.
 package hive
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
 
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	webhooks "github.com/openshift/hive/pkg/apis/hive/v1alpha1/validating-webhooks"
 
 	"github.com/openshift/hive/pkg/operator/assets"
 	"github.com/openshift/hive/pkg/operator/util"
@@ -35,7 +37,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
@@ -43,7 +44,8 @@ import (
 )
 
 const (
-	clusterVersionCRDName = "clusterversions.config.openshift.io"
+	clusterVersionCRDName       = "clusterversions.config.openshift.io"
+	managedDomainsConfigMapName = "managed-domains"
 )
 
 const (
@@ -77,15 +79,38 @@ func (r *ReconcileHiveConfig) deployHiveAdmission(hLog log.FieldLogger, h *resou
 	hiveAdmDeployment.Annotations[aggregatorClientCAHashAnnotation] = instance.Status.AggregatorClientCAHash
 	hiveAdmDeployment.Spec.Template.ObjectMeta.Annotations[aggregatorClientCAHashAnnotation] = instance.Status.AggregatorClientCAHash
 
-	s := json.NewYAMLSerializer(json.DefaultMetaFactory, scheme.Scheme,
-		scheme.Scheme)
+	if len(instance.Spec.ManagedDomains) > 0 {
+		configMap := managedDomainsConfigMap(hiveAdmDeployment.Namespace, instance.Spec.ManagedDomains)
+		_, err = h.ApplyRuntimeObject(configMap, scheme.Scheme)
+		if err != nil {
+			hLog.WithError(err).Error("error applying managed domains configmap")
+		}
+		volume := corev1.Volume{}
+		volume.Name = "managed-domains"
+		volume.ConfigMap = &corev1.ConfigMapVolumeSource{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: managedDomainsConfigMapName,
+			},
+		}
+		volumeMount := corev1.VolumeMount{
+			Name:      "managed-domains",
+			MountPath: "/data/config",
+		}
+		envVar := corev1.EnvVar{
+			Name:  webhooks.ManagedDomainsFileEnvVar,
+			Value: "/data/config/domains",
+		}
+		hiveAdmDeployment.Spec.Template.Spec.Volumes = append(hiveAdmDeployment.Spec.Template.Spec.Volumes, volume)
+		hiveAdmDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(hiveAdmDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, volumeMount)
+		hiveAdmDeployment.Spec.Template.Spec.Containers[0].Env = append(hiveAdmDeployment.Spec.Template.Spec.Containers[0].Env, envVar)
+	}
 
-	err = h.ApplyRuntimeObject(hiveAdmDeployment, s)
+	result, err := h.ApplyRuntimeObject(hiveAdmDeployment, scheme.Scheme)
 	if err != nil {
 		hLog.WithError(err).Error("error applying deployment")
 		return err
 	}
-	hLog.Info("deployment applied")
+	hLog.Infof("deployment applied (%s)", result)
 
 	hLog.Debug("reading apiservice")
 	asset = assets.MustAsset("config/hiveadmission/apiservice.yaml")
@@ -115,33 +140,33 @@ func (r *ReconcileHiveConfig) deployHiveAdmission(hLog log.FieldLogger, h *resou
 		}
 	}
 
-	err = h.ApplyRuntimeObject(apiService, s)
+	result, err = h.ApplyRuntimeObject(apiService, scheme.Scheme)
 	if err != nil {
 		hLog.WithError(err).Error("error applying apiservice")
 		return err
 	}
-	hLog.Info("apiservice applied")
+	hLog.Infof("apiservice applied (%s)", result)
 
-	err = h.ApplyRuntimeObject(cdWebhook, s)
+	result, err = h.ApplyRuntimeObject(cdWebhook, scheme.Scheme)
 	if err != nil {
 		hLog.WithError(err).Error("error applying cluster deployment webhook")
 		return err
 	}
-	hLog.Info("cluster deployment webhook applied")
+	hLog.Infof("cluster deployment webhook applied (%s)", result)
 
-	err = h.ApplyRuntimeObject(cisWebhook, s)
+	result, err = h.ApplyRuntimeObject(cisWebhook, scheme.Scheme)
 	if err != nil {
 		hLog.WithError(err).Error("error applying cluster image set webhook")
 		return err
 	}
-	hLog.Info("cluster image set webhook applied")
+	hLog.Infof("cluster image set webhook applied (%s)", result)
 
-	err = h.ApplyRuntimeObject(dnsZonesWebhook, s)
+	result, err = h.ApplyRuntimeObject(dnsZonesWebhook, scheme.Scheme)
 	if err != nil {
 		hLog.WithError(err).Error("error applying dns zones webhook")
 		return err
 	}
-	hLog.Info("dns zones webhook applied")
+	hLog.Infof("dns zones webhook applied (%s)", result)
 
 	hLog.Info("hiveadmission components reconciled successfully")
 
@@ -209,4 +234,18 @@ func (r *ReconcileHiveConfig) is311(hLog log.FieldLogger) (bool, error) {
 		return false, err
 	}
 	return false, nil
+}
+
+func managedDomainsConfigMap(namespace string, domains []string) *corev1.ConfigMap {
+	cm := &corev1.ConfigMap{}
+	cm.Kind = "ConfigMap"
+	cm.APIVersion = "v1"
+	cm.Name = managedDomainsConfigMapName
+	cm.Namespace = namespace
+	domainsData := &bytes.Buffer{}
+	for _, domain := range domains {
+		fmt.Fprintf(domainsData, "%s\n", domain)
+	}
+	cm.Data = map[string]string{"domains": domainsData.String()}
+	return cm
 }

@@ -68,8 +68,14 @@ type SyncObjectPatch struct {
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
+	// ApplyMode indicates if the patch apply mode is "AlwaysApply" (default) or "ApplyOnce".
+	// ApplyMode "AlwaysApply" indicates that the patch should be applied every time reconcilation occurs.
+	// ApplyMode "ApplyOnce" indicates that the patch should only be applied once.
+	// +optional
+	ApplyMode SyncSetPatchApplyMode `json:"applyMode,omitempty"`
+
 	// Patch is the patch to apply.
-	Patch []byte `json:"patch"`
+	Patch string `json:"patch"`
 
 	// PatchType indicates the PatchType as "json" (default), "merge"
 	// or "strategic".
@@ -81,9 +87,12 @@ type SyncObjectPatch struct {
 type SyncConditionType string
 
 const (
-	// ApplySuccessSyncCondition indicates whether the resource or patch has been
-	// applied or not. If not, it should include a reason and message for the failure.
+	// ApplySuccessSyncCondition indicates whether the resource or patch has been applied.
 	ApplySuccessSyncCondition SyncConditionType = "ApplySuccess"
+
+	// ApplyFailureSyncCondition indicates that a resource or patch has failed to apply.
+	// It should include a reason and message for the failure.
+	ApplyFailureSyncCondition SyncConditionType = "ApplyFailure"
 
 	// DeletionFailedSyncCondition indicates that resource deletion has failed.
 	// It should include a reason and message for the failure.
@@ -144,6 +153,11 @@ type SyncStatus struct {
 	// Kind is the Kind of the object that was synced or patched.
 	Kind string `json:"kind"`
 
+	// Resource is the resource name for the object that was synced.
+	// This will be populated for resources, but not patches
+	// +optional
+	Resource string `json:"resource,omitempty"`
+
 	// Name is the name of the object that was synced or patched.
 	Name string `json:"name"`
 
@@ -151,7 +165,7 @@ type SyncStatus struct {
 	Namespace string `json:"namespace"`
 
 	// Hash is the unique md5 hash of the resource or patch.
-	Hash []byte `json:"hash"`
+	Hash string `json:"hash"`
 
 	// Conditions is the list of conditions indicating success or failure of object
 	// create, update and delete as well as patch application.

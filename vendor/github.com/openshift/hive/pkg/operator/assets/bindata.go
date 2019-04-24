@@ -10,8 +10,20 @@
 // config/hiveadmission/service-account.yaml
 // config/hiveadmission/service.yaml
 // config/manager/deployment.yaml
-// config/clusterimagesets/openshift-4.0-beta2.yaml
+// config/manager/service.yaml
+// config/clusterimagesets/openshift-4.0-beta3.yaml
+// config/clusterimagesets/openshift-4.0-beta4.yaml
 // config/clusterimagesets/openshift-4.0-latest.yaml
+// config/external-dns/deployment.yaml
+// config/external-dns/rbac_role.yaml
+// config/external-dns/rbac_role_binding.yaml
+// config/external-dns/service_account.yaml
+// config/rbac/hive_admin_role.yaml
+// config/rbac/hive_admin_role_binding.yaml
+// config/rbac/hive_frontend_role.yaml
+// config/rbac/hive_frontend_role_binding.yaml
+// config/rbac/manager_role.yaml
+// config/rbac/manager_role_binding.yaml
 // DO NOT EDIT!
 
 package assets
@@ -502,12 +514,9 @@ spec:
         imagePullPolicy: Always
         name: manager
         resources:
-          limits:
-            cpu: 100m
-            memory: 256Mi
           requests:
-            cpu: 100m
-            memory: 75Mi
+            cpu: 500m
+            memory: 512Mi
         command:
           - /opt/services/manager
           - --log-level
@@ -536,30 +545,84 @@ func configManagerDeploymentYaml() (*asset, error) {
 	return a, nil
 }
 
-var _configClusterimagesetsOpenshift40Beta2Yaml = []byte(`apiVersion: hive.openshift.io/v1alpha1
-kind: ClusterImageSet
+var _configManagerServiceYaml = []byte(`apiVersion: v1
+kind: Service
 metadata:
+  name: hive-controllers
+  namespace: hive
   labels:
+    control-plane: controller-manager
     controller-tools.k8s.io: "1.0"
-  name: openshift-v4.0-beta2
 spec:
-  releaseImage: "quay.io/openshift-release-dev/ocp-release:4.0.0-0.7"
-  # TODO: what hive image should we use here? it should be verified working
-  # with the release image. could switch to using appsre images we run in stage/prod.
-  hiveImage: "quay.io/twiest/hive-controller:20190314"
+  selector:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+  ports:
+  - port: 2112
 `)
 
-func configClusterimagesetsOpenshift40Beta2YamlBytes() ([]byte, error) {
-	return _configClusterimagesetsOpenshift40Beta2Yaml, nil
+func configManagerServiceYamlBytes() ([]byte, error) {
+	return _configManagerServiceYaml, nil
 }
 
-func configClusterimagesetsOpenshift40Beta2Yaml() (*asset, error) {
-	bytes, err := configClusterimagesetsOpenshift40Beta2YamlBytes()
+func configManagerServiceYaml() (*asset, error) {
+	bytes, err := configManagerServiceYamlBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "config/clusterimagesets/openshift-4.0-beta2.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	info := bindataFileInfo{name: "config/manager/service.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configClusterimagesetsOpenshift40Beta3Yaml = []byte(`apiVersion: hive.openshift.io/v1alpha1
+kind: ClusterImageSet
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: openshift-v4.0-beta3
+spec:
+  releaseImage: "quay.io/openshift-release-dev/ocp-release:4.0.0-0.9"
+  hiveImage: "quay.io/twiest/hive-controller:20190403"
+`)
+
+func configClusterimagesetsOpenshift40Beta3YamlBytes() ([]byte, error) {
+	return _configClusterimagesetsOpenshift40Beta3Yaml, nil
+}
+
+func configClusterimagesetsOpenshift40Beta3Yaml() (*asset, error) {
+	bytes, err := configClusterimagesetsOpenshift40Beta3YamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/clusterimagesets/openshift-4.0-beta3.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configClusterimagesetsOpenshift40Beta4Yaml = []byte(`apiVersion: hive.openshift.io/v1alpha1
+kind: ClusterImageSet
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: openshift-v4.0-beta4
+spec:
+  releaseImage: "quay.io/openshift-release-dev/ocp-release:4.1.0-rc.0"
+  hiveImage: "quay.io/twiest/hive-controller:20190423"`)
+
+func configClusterimagesetsOpenshift40Beta4YamlBytes() ([]byte, error) {
+	return _configClusterimagesetsOpenshift40Beta4Yaml, nil
+}
+
+func configClusterimagesetsOpenshift40Beta4Yaml() (*asset, error) {
+	bytes, err := configClusterimagesetsOpenshift40Beta4YamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/clusterimagesets/openshift-4.0-beta4.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -586,6 +649,609 @@ func configClusterimagesetsOpenshift40LatestYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "config/clusterimagesets/openshift-4.0-latest.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configExternalDnsDeploymentYaml = []byte(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: hive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: external-dns
+  template:
+    metadata:
+      labels:
+        name: external-dns
+    spec:
+      strategy:
+        type: Recreate
+      serviceAccountName: external-dns
+      containers:
+      - name: external-dns
+        image: registry.svc.ci.openshift.org/openshift/hive-v4.0:external-dns
+        args:
+        - --source=crd
+        - --crd-source-apiversion=hive.openshift.io/v1alpha1
+        - --crd-source-kind=DNSEndpoint
+        - --registry=noop
+        - --policy=upsert-only
+`)
+
+func configExternalDnsDeploymentYamlBytes() ([]byte, error) {
+	return _configExternalDnsDeploymentYaml, nil
+}
+
+func configExternalDnsDeploymentYaml() (*asset, error) {
+	bytes, err := configExternalDnsDeploymentYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/external-dns/deployment.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configExternalDnsRbac_roleYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - dnsendpoints
+  - dnsendpoints/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+`)
+
+func configExternalDnsRbac_roleYamlBytes() ([]byte, error) {
+	return _configExternalDnsRbac_roleYaml, nil
+}
+
+func configExternalDnsRbac_roleYaml() (*asset, error) {
+	bytes, err := configExternalDnsRbac_roleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/external-dns/rbac_role.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configExternalDnsRbac_role_bindingYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+- kind: ServiceAccount
+  name: external-dns
+  namespace: hive
+`)
+
+func configExternalDnsRbac_role_bindingYamlBytes() ([]byte, error) {
+	return _configExternalDnsRbac_role_bindingYaml, nil
+}
+
+func configExternalDnsRbac_role_bindingYaml() (*asset, error) {
+	bytes, err := configExternalDnsRbac_role_bindingYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/external-dns/rbac_role_binding.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configExternalDnsService_accountYaml = []byte(`apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+  namespace: hive
+`)
+
+func configExternalDnsService_accountYamlBytes() ([]byte, error) {
+	return _configExternalDnsService_accountYaml, nil
+}
+
+func configExternalDnsService_accountYaml() (*asset, error) {
+	bytes, err := configExternalDnsService_accountYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/external-dns/service_account.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configRbacHive_admin_roleYaml = []byte(`# hive-admin is a role intended for hive administrators who need to be able to debug
+# cluster installations, and modify hive configuration.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hive-admin
+rules:
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterdeployments
+  - dnszones
+  - dnsendpoints
+  - selectorsyncidentityproviders
+  - selectorsyncsets
+  - syncidentityproviders
+  - syncsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterimagesets
+  - hiveconfigs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+`)
+
+func configRbacHive_admin_roleYamlBytes() ([]byte, error) {
+	return _configRbacHive_admin_roleYaml, nil
+}
+
+func configRbacHive_admin_roleYaml() (*asset, error) {
+	bytes, err := configRbacHive_admin_roleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/rbac/hive_admin_role.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configRbacHive_admin_role_bindingYaml = []byte(`apiVersion: authorization.openshift.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hive-admin
+roleRef:
+  name: hive-admin
+groupNames:
+- hive-admins
+subjects:
+- kind: Group
+  name: hive-admins
+`)
+
+func configRbacHive_admin_role_bindingYamlBytes() ([]byte, error) {
+	return _configRbacHive_admin_role_bindingYaml, nil
+}
+
+func configRbacHive_admin_role_bindingYaml() (*asset, error) {
+	bytes, err := configRbacHive_admin_role_bindingYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/rbac/hive_admin_role_binding.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configRbacHive_frontend_roleYaml = []byte(`# hive-frontend is a role intended for integrating applications acting as a frontend
+# to Hive. These applications will need quite powerful permissions in the Hive cluster
+# to create namespaces to organize clusters, as well as all the required objects in those
+# clusters.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hive-frontend
+rules:
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  - configmaps
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterdeployments
+  - dnszones
+  - selectorsyncidentityproviders
+  - syncidentityproviders
+  - selectorsyncsets
+  - syncsets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterimagesets
+  - hiveconfigs
+  verbs:
+  - get
+  - list
+  - watch
+`)
+
+func configRbacHive_frontend_roleYamlBytes() ([]byte, error) {
+	return _configRbacHive_frontend_roleYaml, nil
+}
+
+func configRbacHive_frontend_roleYaml() (*asset, error) {
+	bytes, err := configRbacHive_frontend_roleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/rbac/hive_frontend_role.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configRbacHive_frontend_role_bindingYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: hive-frontend
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: hive-frontend
+subjects:
+- kind: ServiceAccount
+  name: hive-frontend
+  namespace: hive
+`)
+
+func configRbacHive_frontend_role_bindingYamlBytes() ([]byte, error) {
+	return _configRbacHive_frontend_role_bindingYaml, nil
+}
+
+func configRbacHive_frontend_role_bindingYaml() (*asset, error) {
+	bytes, err := configRbacHive_frontend_role_bindingYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/rbac/hive_frontend_role_binding.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configRbacManager_roleYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  - secrets
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterdeployments
+  - clusterdeployments/status
+  - clusterdeployments/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterimagesets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterimagesets/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - dnszones
+  - dnszones/status
+  - dnszones/finalizers
+  - dnsendpoints
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - clusterregistry.k8s.io
+  resources:
+  - clusters
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - core.federation.k8s.io
+  resources:
+  - federatedclusters
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterdeployments
+  verbs:
+  - get
+  - watch
+  - update
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - syncsets
+  verbs:
+  - get
+  - create
+  - update
+  - delete
+  - patch
+  - list
+  - watch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - syncidentityproviders
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - selectorsyncidentityproviders
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterdeployments
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterdeployments
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - syncsets
+  verbs:
+  - get
+  - create
+  - update
+  - delete
+  - patch
+  - list
+  - watch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - selectorsyncsets
+  verbs:
+  - get
+  - create
+  - update
+  - delete
+  - patch
+  - list
+  - watch
+`)
+
+func configRbacManager_roleYamlBytes() ([]byte, error) {
+	return _configRbacManager_roleYaml, nil
+}
+
+func configRbacManager_roleYaml() (*asset, error) {
+	bytes, err := configRbacManager_roleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/rbac/manager_role.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _configRbacManager_role_bindingYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: system
+`)
+
+func configRbacManager_role_bindingYamlBytes() ([]byte, error) {
+	return _configRbacManager_role_bindingYaml, nil
+}
+
+func configRbacManager_role_bindingYaml() (*asset, error) {
+	bytes, err := configRbacManager_role_bindingYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "config/rbac/manager_role_binding.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -652,8 +1318,20 @@ var _bindata = map[string]func() (*asset, error){
 	"config/hiveadmission/service-account.yaml":                 configHiveadmissionServiceAccountYaml,
 	"config/hiveadmission/service.yaml":                         configHiveadmissionServiceYaml,
 	"config/manager/deployment.yaml":                            configManagerDeploymentYaml,
-	"config/clusterimagesets/openshift-4.0-beta2.yaml":          configClusterimagesetsOpenshift40Beta2Yaml,
+	"config/manager/service.yaml":                               configManagerServiceYaml,
+	"config/clusterimagesets/openshift-4.0-beta3.yaml":          configClusterimagesetsOpenshift40Beta3Yaml,
+	"config/clusterimagesets/openshift-4.0-beta4.yaml":          configClusterimagesetsOpenshift40Beta4Yaml,
 	"config/clusterimagesets/openshift-4.0-latest.yaml":         configClusterimagesetsOpenshift40LatestYaml,
+	"config/external-dns/deployment.yaml":                       configExternalDnsDeploymentYaml,
+	"config/external-dns/rbac_role.yaml":                        configExternalDnsRbac_roleYaml,
+	"config/external-dns/rbac_role_binding.yaml":                configExternalDnsRbac_role_bindingYaml,
+	"config/external-dns/service_account.yaml":                  configExternalDnsService_accountYaml,
+	"config/rbac/hive_admin_role.yaml":                          configRbacHive_admin_roleYaml,
+	"config/rbac/hive_admin_role_binding.yaml":                  configRbacHive_admin_role_bindingYaml,
+	"config/rbac/hive_frontend_role.yaml":                       configRbacHive_frontend_roleYaml,
+	"config/rbac/hive_frontend_role_binding.yaml":               configRbacHive_frontend_role_bindingYaml,
+	"config/rbac/manager_role.yaml":                             configRbacManager_roleYaml,
+	"config/rbac/manager_role_binding.yaml":                     configRbacManager_role_bindingYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -699,8 +1377,15 @@ type bintree struct {
 var _bintree = &bintree{nil, map[string]*bintree{
 	"config": {nil, map[string]*bintree{
 		"clusterimagesets": {nil, map[string]*bintree{
-			"openshift-4.0-beta2.yaml":  {configClusterimagesetsOpenshift40Beta2Yaml, map[string]*bintree{}},
+			"openshift-4.0-beta3.yaml":  {configClusterimagesetsOpenshift40Beta3Yaml, map[string]*bintree{}},
+			"openshift-4.0-beta4.yaml":  {configClusterimagesetsOpenshift40Beta4Yaml, map[string]*bintree{}},
 			"openshift-4.0-latest.yaml": {configClusterimagesetsOpenshift40LatestYaml, map[string]*bintree{}},
+		}},
+		"external-dns": {nil, map[string]*bintree{
+			"deployment.yaml":        {configExternalDnsDeploymentYaml, map[string]*bintree{}},
+			"rbac_role.yaml":         {configExternalDnsRbac_roleYaml, map[string]*bintree{}},
+			"rbac_role_binding.yaml": {configExternalDnsRbac_role_bindingYaml, map[string]*bintree{}},
+			"service_account.yaml":   {configExternalDnsService_accountYaml, map[string]*bintree{}},
 		}},
 		"hiveadmission": {nil, map[string]*bintree{
 			"apiservice.yaml":                      {configHiveadmissionApiserviceYaml, map[string]*bintree{}},
@@ -715,6 +1400,15 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		}},
 		"manager": {nil, map[string]*bintree{
 			"deployment.yaml": {configManagerDeploymentYaml, map[string]*bintree{}},
+			"service.yaml":    {configManagerServiceYaml, map[string]*bintree{}},
+		}},
+		"rbac": {nil, map[string]*bintree{
+			"hive_admin_role.yaml":            {configRbacHive_admin_roleYaml, map[string]*bintree{}},
+			"hive_admin_role_binding.yaml":    {configRbacHive_admin_role_bindingYaml, map[string]*bintree{}},
+			"hive_frontend_role.yaml":         {configRbacHive_frontend_roleYaml, map[string]*bintree{}},
+			"hive_frontend_role_binding.yaml": {configRbacHive_frontend_role_bindingYaml, map[string]*bintree{}},
+			"manager_role.yaml":               {configRbacManager_roleYaml, map[string]*bintree{}},
+			"manager_role_binding.yaml":       {configRbacManager_role_bindingYaml, map[string]*bintree{}},
 		}},
 	}},
 }}
