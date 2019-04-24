@@ -31,6 +31,8 @@ const (
 	testNamespace   = "testNamespace"
 	testSnitchURL   = "https://deadmanssnitch.com/12345"
 	testSnitchToken = "abcdefg"
+	testTag         = "hive-test"
+	testAPIKey      = "abc123"
 )
 
 type SyncSetEntry struct {
@@ -85,6 +87,21 @@ func decode(t *testing.T, data []byte) (runtime.Object, metav1.Object, error) {
 		return nil, nil, err
 	}
 	return r, obj, nil
+}
+
+// return a secret that matches the secret found in the hive namespace
+func testSecret() *corev1.Secret {
+	s := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      DeadMansSnitchAPISecretName,
+			Namespace: DeadMansSnitchOperatorNamespace,
+		},
+		Data: map[string][]byte{
+			DeadMansSnitchAPISecretKey: []byte(testAPIKey),
+			DeadMansSnitchTagKey:       []byte(testTag),
+		},
+	}
+	return s
 }
 
 // return a simple test ClusterDeployment
@@ -154,6 +171,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			name: "Test Creating",
 			localObjects: []runtime.Object{
 				testClusterDeployment(),
+				testSecret(),
 			},
 			expectedSyncSets: &SyncSetEntry{
 				name:                     testClusterName + "-dms",
@@ -162,7 +180,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			},
 			verifySyncSets: verifySyncSetExists,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
-				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL}, nil).Times(1)
+				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL, Tags: []string{testTag}}, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
 			},
 		},
@@ -270,6 +288,15 @@ func verifyNoSyncSet(c client.Client, expected *SyncSetEntry) bool {
 
 	if errors.IsNotFound(err) {
 		return true
+	}
+	return false
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
 	}
 	return false
 }
