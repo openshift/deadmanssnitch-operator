@@ -74,8 +74,8 @@ func UpdateMetricDeadMansSnitchHeartbeatGauge() {
 		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
 	}
 	req.SetBasicAuth(DeadMansSnitchAPISecretName, "")
-	defer resp.Body.Close()
 	resp, err := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
 	}
