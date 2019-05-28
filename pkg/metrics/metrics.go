@@ -18,8 +18,8 @@ import (
 	"net/http"
 	"time"
 
+	dms "github.com/openshift/deadmanssnitch-operator/pkg/controller/deadmanssnitch"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/openshift/deadmanssnitch-operator/pkg/controller/deadmanssnitch"
 )
 
 const (
@@ -74,12 +74,16 @@ func UpdateMetricDeadMansSnitchHeartbeatGauge() {
 	if err != nil {
 		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
 	}
+
 	req.SetBasicAuth(DeadMansSnitchAPISecretName, "")
+
 	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
+
 	if err != nil {
 		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(1))
 	} else {
