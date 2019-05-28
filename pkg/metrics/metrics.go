@@ -16,7 +16,9 @@ package metrics
 
 import (
 	"net/http"
+	"time"
 
+	dms "github.com/openshift/deadmanssnitch-operator/pkg/controller/deadmanssnitch"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -26,13 +28,13 @@ const (
 )
 
 var (
-	metricPlaceholder = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "placeholder",
-		Help: "Placeholder",
+	metricDeadMansSnitchHeartbeat = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "metricDeadMansSnitchHeartbeat",
+		Help: "Metric for heartbeating the Dead Man's Snitch api",
 	}, []string{"name"})
 
 	metricsList = []prometheus.Collector{
-		metricPlaceholder,
+		metricDeadMansSnitchHeartbeat,
 	}
 )
 
@@ -56,8 +58,34 @@ func RegisterMetrics() error {
 	return nil
 }
 
-// UpdatePlaceholderGauge ...
-func UpdatePlaceholderGauge() {
+// UpdateMetrics updates all the metrics ever 5 minutes
+func UpdateMetrics() {
 
-	metricPlaceholder.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(1))
+	d := time.Tick(5 * time.Minute)
+	for range d {
+		UpdateMetricDeadMansSnitchHeartbeatGauge()
+	}
+}
+
+// UpdateMetricDeadMansSnitchHeartbeatGauge curls the DMS API, updates the gauge to 1 when successful.
+func UpdateMetricDeadMansSnitchHeartbeatGauge() {
+
+	req, err := http.NewRequest("GET", "https://api.deadmanssnitch.com/v1/snitches", nil)
+	if err != nil {
+		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
+	}
+
+	req.SetBasicAuth(dms.DeadMansSnitchAPISecretName, "")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(1))
+	} else {
+		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
+	}
 }

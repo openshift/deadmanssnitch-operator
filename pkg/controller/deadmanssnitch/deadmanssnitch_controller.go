@@ -162,7 +162,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	// Check to see if the ClusterDeployment is deleted
 	if instance.DeletionTimestamp != nil {
 		// Delete the dms
-		reqLogger.Info("Deleting the DMS from api.deadmanssnicth.com", "Namespace", request.Namespace, "Name", request.Name)
+		reqLogger.Info("Deleting the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
 		snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
 		snitches, err := r.dmsclient.FindSnitchesByName(snitchName)
 		if err != nil {
@@ -171,10 +171,10 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		for _, s := range snitches {
 			delStatus, err := r.dmsclient.Delete(s.Token)
 			if !delStatus || err != nil {
-				reqLogger.Info("Failed to delete the DMS from api.deadmanssnicth.com", "Namespace", request.Namespace, "Name", request.Name)
+				reqLogger.Info("Failed to delete the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
 				return reconcile.Result{}, err
 			}
-			reqLogger.Info("Deleted the DMS from api.deadmanssnicth.com", "Namespace", request.Namespace, "Name", request.Name)
+			reqLogger.Info("Deleted the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
 		}
 
 		reqLogger.Info("Deleting DMS finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
