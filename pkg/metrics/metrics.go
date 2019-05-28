@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/openshift/deadmanssnitch-operator/pkg/controller/deadmanssnitch"
 )
 
 const (
