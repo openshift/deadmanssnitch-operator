@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: deadmanssnitch-operator
+  namespace: openshift-monitoring
+spec:
+  groups:
+  - name: deadmanssnitch-operator
+    rules:
+    - alert: Unable to communicate with Dead Man's Snitch
+      annotations:
+        message: "Unable to communicate with Dead Man's Snitch"
+        link_url: "addsomeurlhe.re"
+      expr: metricDeadMansSnitchHeartbeat = 0
+      for: 15m
+      labels:
+        severity: critical
