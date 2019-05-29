@@ -10,7 +10,6 @@ spec:
     - alert: Unable to communicate with Dead Man's Snitch
       annotations:
         message: "Unable to communicate with Dead Man's Snitch"
-        link_url: "addsomeurlhe.re"
       expr: metricDeadMansSnitchHeartbeat = 0
       for: 15m
       labels:
