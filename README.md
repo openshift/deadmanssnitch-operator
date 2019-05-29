@@ -8,4 +8,4 @@ metricDeadMansSnitchHeartbeat: Every 5 minutes, makes a request to the Dead Man'
 
 ## Alerts
 
-Creates an alert when metricDeadMansSnitchHeartbeat is 0 for 15 minutes.
+- DeadMansSnitchAPIUnavailable - Unable to communicate with Dead Man's Snitch API for 15 minutes.
