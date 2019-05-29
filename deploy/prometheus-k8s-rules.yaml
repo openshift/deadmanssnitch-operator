@@ -7,7 +7,7 @@ spec:
   groups:
   - name: deadmanssnitch-operator
     rules:
-    - alert: Unable to communicate with Dead Man's Snitch
+    - alert: DeadMansSnitchAPIUnavailable
       annotations:
         message: "Unable to communicate with Dead Man's Snitch"
       expr: metricDeadMansSnitchHeartbeat = 0
