@@ -14,3 +14,4 @@ spec:
       for: 15m
       labels:
         severity: critical
+        link_url: https://access.redhat.com/articles/4183591
