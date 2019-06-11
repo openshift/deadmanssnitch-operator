@@ -227,7 +227,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			}
 			tags := []string{hiveClusterTag}
 			snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
-			newSnitch := dmsclient.NewSnitch(snitchName, tags, "daily", "basic")
+			newSnitch := dmsclient.NewSnitch(snitchName, tags, "15_minute", "basic")
 			snitch, err = r.dmsclient.Create(newSnitch)
 			if err != nil {
 				return reconcile.Result{}, err
