@@ -216,7 +216,8 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		// create new DMS SyncSet
 		reqLogger.Info("SyncSet not found, Creating a new SynsSet", "Namespace", request.Namespace, "Name", request.Name)
 
-		snitches, err := r.dmsclient.FindSnitchesByName(request.Name)
+		snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
+		snitches, err := r.dmsclient.FindSnitchesByName(snitchName)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -232,7 +233,6 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 				return reconcile.Result{}, err
 			}
 			tags := []string{hiveClusterTag}
-			snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
 			newSnitch := dmsclient.NewSnitch(snitchName, tags, "15_minute", "basic")
 			snitch, err = r.dmsclient.Create(newSnitch)
 			if err != nil {
