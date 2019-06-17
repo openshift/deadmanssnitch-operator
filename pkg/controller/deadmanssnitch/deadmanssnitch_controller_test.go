@@ -107,11 +107,14 @@ func testSecret() *corev1.Secret {
 // return a simple test ClusterDeployment
 func testClusterDeployment() *hivev1alpha1.ClusterDeployment {
 	labelMap := map[string]string{ClusterDeploymentManagedLabel: "true"}
+	finalizers := []string{DeadMansSnitchFinalizer}
+
 	cd := hivev1alpha1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName,
-			Namespace: testNamespace,
-			Labels:    labelMap,
+			Name:       testClusterName,
+			Namespace:  testNamespace,
+			Labels:     labelMap,
+			Finalizers: finalizers,
 		},
 		Spec: hivev1alpha1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
