@@ -199,6 +199,12 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			reqLogger.Error(err, "Error setting Finalizer on ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, err
 		}
+
+		// Exit the reconcile loop after modifying the clusterdeployment resource
+		// Adding the finalizer to clusterdeployment will requeue a reconciliation loop
+		// and strange things will happen.  Just return after modifying the resource that
+		// is being watched.
+		return reconcile.Result{}, nil
 	}
 
 	ssName := request.Name + "-dms"
