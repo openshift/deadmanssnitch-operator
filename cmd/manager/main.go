@@ -9,7 +9,8 @@ import (
 
 	"github.com/openshift/deadmanssnitch-operator/pkg/apis"
 	"github.com/openshift/deadmanssnitch-operator/pkg/controller"
-	operatormetrics "github.com/openshift/deadmanssnitch-operator/pkg/metrics"
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
+	"github.com/openshift/operator-custom-metrics/pkg/metrics"
 
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
 
@@ -29,8 +30,8 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
-	metricsHost       = "0.0.0.0"
-	metricsPort int32 = 8383
+	metricsPath = "/metrics"
+	metricsPort = "8080"
 )
 var log = logf.Log.WithName("cmd")
 
@@ -89,8 +90,7 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace:          "",
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Namespace: "",
 	})
 	if err != nil {
 		log.Error(err, "")
@@ -122,8 +122,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	metricsServer := metrics.NewBuilder().WithPort(metricsPort).WithPath(metricsPath).
+		WithCollectors(localmetrics.MetricDeadMansSnitchHeartbeat).
+		GetConfig()
 	// Configure metrics if it errors log the error but continue
-	if err := operatormetrics.ConfigureMetrics(context.TODO()); err != nil {
+	if err := metrics.ConfigureMetrics(context.TODO(), *metricsServer); err != nil {
 		log.Error(err, "Failed to configure Metrics")
 	}
 

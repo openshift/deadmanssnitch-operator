@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metrics
+package localmetrics
 
 import (
 	"net/http"
@@ -22,41 +22,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	// MetricsEndpoint is the port to export metrics on
-	MetricsEndpoint = ":8080"
-)
-
 var (
-	metricDeadMansSnitchHeartbeat = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	MetricDeadMansSnitchHeartbeat = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "metricDeadMansSnitchHeartbeat",
 		Help: "Metric for heartbeating the Dead Man's Snitch api",
 	}, []string{"name"})
 
-	metricsList = []prometheus.Collector{
-		metricDeadMansSnitchHeartbeat,
+	MetricsList = []prometheus.Collector{
+		MetricDeadMansSnitchHeartbeat,
 	}
 )
-
-// StartMetrics register metrics and exposes them
-func StartMetrics() {
-
-	// Register metrics and start serving them on /metrics endpoint
-	RegisterMetrics()
-	http.Handle("/metrics", prometheus.Handler())
-	go http.ListenAndServe(MetricsEndpoint, nil)
-}
-
-// RegisterMetrics for the operator
-func RegisterMetrics() error {
-	for _, metric := range metricsList {
-		err := prometheus.Register(metric)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 // UpdateMetrics updates all the metrics ever 5 minutes
 func UpdateMetrics() {
@@ -72,20 +47,20 @@ func UpdateMetricDeadMansSnitchHeartbeatGauge() {
 
 	req, err := http.NewRequest("GET", "https://api.deadmanssnitch.com/v1/snitches", nil)
 	if err != nil {
-		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
+		MetricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
 	}
 
 	req.SetBasicAuth(dms.DeadMansSnitchAPISecretName, "")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
+		MetricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(1))
+		MetricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(1))
 	} else {
-		metricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
+		MetricDeadMansSnitchHeartbeat.With(prometheus.Labels{"name": "deadmanssnitch-operator"}).Set(float64(0))
 	}
 }
