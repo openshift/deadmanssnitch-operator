@@ -47,8 +47,6 @@
   packages = [
     "pkg/apis/monitoring",
     "pkg/apis/monitoring/v1",
-    "pkg/client/versioned/scheme",
-    "pkg/client/versioned/typed/monitoring/v1",
   ]
   pruneopts = "NT"
   revision = "72ec4b9b16ef11700724dc71fec77112536eed40"
@@ -363,13 +361,20 @@
   revision = "75ba8f5c5122abb2a1da908443c6c9b5e9129479"
 
 [[projects]]
+  digest = "1:341f4eaa5439f00199e5eb36cf068578bf0e63d6f7d6d5307de26ae53d49b784"
+  name = "github.com/openshift/operator-custom-metrics"
+  packages = ["pkg/metrics"]
+  pruneopts = "NT"
+  revision = "d0d7d512f402b1514326f4bf1f6adf17f7097480"
+  version = "v0.1.0"
+
+[[projects]]
   digest = "1:df8e741cd0f86087367f3bcfeb1cf237e96fada71194b6d4cee9412d221ec763"
   name = "github.com/operator-framework/operator-sdk"
   packages = [
     "pkg/k8sutil",
     "pkg/leader",
     "pkg/log/zap",
-    "pkg/metrics",
     "version",
   ]
   pruneopts = "NT"
@@ -980,13 +985,15 @@
   analyzer-version = 1
   input-imports = [
     "github.com/golang/mock/gomock",
+    "github.com/openshift/api/route/v1",
     "github.com/openshift/hive/pkg/apis",
     "github.com/openshift/hive/pkg/apis/hive/v1alpha1",
     "github.com/openshift/hive/pkg/controller/utils",
+    "github.com/openshift/operator-custom-metrics/pkg/metrics",
     "github.com/operator-framework/operator-sdk/pkg/leader",
     "github.com/operator-framework/operator-sdk/pkg/log/zap",
-    "github.com/operator-framework/operator-sdk/pkg/metrics",
     "github.com/operator-framework/operator-sdk/version",
+    "github.com/prometheus/client_golang/prometheus",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
     "k8s.io/api/core/v1",
