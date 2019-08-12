@@ -240,6 +240,13 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			}
 		}
 
+		// initialize snitch
+		err = r.dmsclient.Initialize(snitch.CheckInURL)
+		if err != nil {
+			reqLogger.Error(err, "Unable to initialize deadman's snitch", "Namespace", request.Namespace, "Name", request.Name, "CheckInURL", snitch.CheckInURL)
+			return reconcile.Result{}, err
+		}
+
 		newSS := newSyncSet(request.Namespace, request.Name, snitch.CheckInURL)
 
 		// ensure the syncset gets cleaned up when the clusterdeployment is deleted
@@ -255,7 +262,6 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Info("Done creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
 	} else {
 		reqLogger.Info("SyncSet Already Present, nothing to do here...", "Namespace", request.Namespace, "Name", request.Name)
-
 	}
 
 	return reconcile.Result{}, nil

@@ -21,6 +21,7 @@ type Client interface {
 	Delete(snitchToken string) (bool, error)
 	FindSnitchesByName(snitchName string) ([]Snitch, error)
 	Update(updateSnitch Snitch) (Snitch, error)
+	Initialize(snithURL string) error
 }
 
 // Snitch Struct
@@ -110,7 +111,7 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 		return nil, err
 	}
 
-	resp, _ := c.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,7 @@ func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 		return snitch, err
 	}
 
-	resp, _ := c.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return snitch, err
 	}
@@ -146,7 +147,7 @@ func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 	if err != nil {
 		return snitch, err
 	}
-	resp, _ := c.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return snitch, err
 	}
@@ -163,7 +164,7 @@ func (c *dmsClient) Delete(snitchToken string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	resp, _ := c.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return false, err
 	}
@@ -200,7 +201,7 @@ func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 	if err != nil {
 		return snitch, err
 	}
-	resp, _ := c.do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return snitch, err
 	}
@@ -209,4 +210,22 @@ func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 	err = json.NewDecoder(resp.Body).Decode(&snitch)
 
 	return snitch, err
+}
+
+// Initialize the snitch with a basic GET call to its url
+func (c *dmsClient) Initialize(CheckInURL string) error {
+	var buf io.ReadWriter
+	req, err := http.NewRequest("GET", CheckInURL, buf)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("User-Agent", "golang httpClient")
+
+	_, err = c.do(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
