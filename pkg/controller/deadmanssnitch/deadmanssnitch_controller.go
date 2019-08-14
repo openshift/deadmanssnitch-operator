@@ -241,13 +241,13 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		}
 
 		// Get the snitch again to check status
-		snitches, err = r.dmsclient.FindSnitchesByName(snitchName)
+		ReSnitches, err := r.dmsclient.FindSnitchesByName(snitchName)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
-		if len(snitches) > 0 {
-			if snitches[0].Status == "pending" {
+		if len(ReSnitches) > 0 {
+			if ReSnitches[0].Status == "pending" {
 				reqLogger.Info("Checking in Snitch ...", "Namespace", request.Namespace, "Name", request.Name)
 				// CheckIn snitch
 				err = r.dmsclient.CheckIn(snitch)
@@ -255,14 +255,13 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 					reqLogger.Error(err, "Unable to check in deadman's snitch", "Namespace", request.Namespace, "Name", request.Name, "CheckInURL", snitch.CheckInURL)
 					return reconcile.Result{}, err
 				}
-				return reconcile.Result{}, nil
-			} else {
-				reqLogger.Error(err, "Unable to get Snitch by name", "Namespace", request.Namespace, "Name", request.Name)
-				return reconcile.Result{}, nil
 			}
+		} else {
+			reqLogger.Error(err, "Unable to get Snitch by name", "Namespace", request.Namespace, "Name", request.Name)
+			return reconcile.Result{}, err
 		}
 
-		newSS := newSyncSet(request.Namespace, request.Name, snitch.CheckInURL)
+		newSS := newSyncSet(request.Namespace, request.Name, ReSnitches[0].CheckInURL)
 
 		// ensure the syncset gets cleaned up when the clusterdeployment is deleted
 		if err := controllerutil.SetControllerReference(instance, newSS, r.scheme); err != nil {
