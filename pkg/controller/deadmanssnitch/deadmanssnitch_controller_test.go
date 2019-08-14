@@ -185,9 +185,14 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			verifySyncSets: verifySyncSetExists,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL, Tags: []string{testTag}}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
-					{CheckInURL: testSnitchURL},
-				}, nil).Times(2)
+					{
+						CheckInURL: testSnitchURL,
+						Status:     "pending",
+					},
+				}, nil).Times(1)
+				r.CheckIn(gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
