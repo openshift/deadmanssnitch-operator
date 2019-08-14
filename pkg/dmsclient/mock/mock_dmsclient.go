@@ -123,16 +123,16 @@ func (mr *MockClientMockRecorder) Update(updateSnitch interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockClient)(nil).Update), updateSnitch)
 }
 
-// Initialize mocks base method
-func (m *MockClient) Initialize(snithURL string) error {
+// CheckIn mocks base method
+func (m *MockClient) CheckIn(s dmsclient.Snitch) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Initialize", snithURL)
+	ret := m.ctrl.Call(m, "CheckIn", s)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Initialize indicates an expected call of Initialize
-func (mr *MockClientMockRecorder) Initialize(snithURL interface{}) *gomock.Call {
+// CheckIn indicates an expected call of CheckIn
+func (mr *MockClientMockRecorder) CheckIn(s interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialize", reflect.TypeOf((*MockClient)(nil).Initialize), snithURL)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckIn", reflect.TypeOf((*MockClient)(nil).CheckIn), s)
 }

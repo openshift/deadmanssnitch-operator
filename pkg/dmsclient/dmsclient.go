@@ -21,7 +21,7 @@ type Client interface {
 	Delete(snitchToken string) (bool, error)
 	FindSnitchesByName(snitchName string) ([]Snitch, error)
 	Update(updateSnitch Snitch) (Snitch, error)
-	Initialize(snithURL string) error
+	CheckIn(s Snitch) error
 }
 
 // Snitch Struct
@@ -213,9 +213,9 @@ func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 }
 
 // Initialize the snitch with a basic GET call to its url
-func (c *dmsClient) Initialize(CheckInURL string) error {
+func (c *dmsClient) CheckIn(s Snitch) error {
 	var buf io.ReadWriter
-	req, err := http.NewRequest("GET", CheckInURL, buf)
+	req, err := http.NewRequest("GET", s.CheckInURL, buf)
 	if err != nil {
 		return err
 	}

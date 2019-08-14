@@ -240,11 +240,26 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			}
 		}
 
-		// initialize snitch
-		err = r.dmsclient.Initialize(snitch.CheckInURL)
+		// Get the snitch again to check status
+		snitches, err = r.dmsclient.FindSnitchesByName(snitchName)
 		if err != nil {
-			reqLogger.Error(err, "Unable to initialize deadman's snitch", "Namespace", request.Namespace, "Name", request.Name, "CheckInURL", snitch.CheckInURL)
 			return reconcile.Result{}, err
+		}
+
+		if len(snitches) > 0 {
+			if snitches[0].Status == "pending" {
+				reqLogger.Info("Checking in Snitch ...", "Namespace", request.Namespace, "Name", request.Name)
+				// CheckIn snitch
+				err = r.dmsclient.CheckIn(snitch)
+				if err != nil {
+					reqLogger.Error(err, "Unable to check in deadman's snitch", "Namespace", request.Namespace, "Name", request.Name, "CheckInURL", snitch.CheckInURL)
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			} else {
+				reqLogger.Error(err, "Unable to get Snitch by name", "Namespace", request.Namespace, "Name", request.Name)
+				return reconcile.Result{}, nil
+			}
 		}
 
 		newSS := newSyncSet(request.Namespace, request.Name, snitch.CheckInURL)
