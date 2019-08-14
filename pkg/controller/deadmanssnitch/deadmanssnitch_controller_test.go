@@ -2,6 +2,7 @@ package deadmanssnitch
 
 import (
 	"context"
+
 	"github.com/golang/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -185,6 +186,13 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL, Tags: []string{testTag}}, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{
+						CheckInURL: testSnitchURL,
+						Status:     "pending",
+					},
+				}, nil).Times(1)
+				r.CheckIn(gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
