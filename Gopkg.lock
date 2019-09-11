@@ -275,6 +275,14 @@
   version = "v1.1.6"
 
 [[projects]]
+  digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "NT"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
+
+[[projects]]
   branch = "master"
   digest = "1:782fb677791a7fe7b5b8e637bcf695efb13950ce09e3e8e3b1cf21c57649be7c"
   name = "github.com/mailru/easyjson"
@@ -350,15 +358,16 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4cde2d592b10153ab0b416220e99504aef6f485a2940522a23530203681febca"
+  digest = "1:790f461b293de564d90e8f5cdf58db859228bac4358eae53b56f93d38b1401ab"
   name = "github.com/openshift/hive"
   packages = [
     "pkg/apis",
     "pkg/apis/hive/v1alpha1",
+    "pkg/apis/hive/v1alpha1/aws",
     "pkg/controller/utils",
   ]
   pruneopts = "NT"
-  revision = "75ba8f5c5122abb2a1da908443c6c9b5e9129479"
+  revision = "7e8117645d68a157eefb09bedc3322f81741a7fb"
 
 [[projects]]
   digest = "1:341f4eaa5439f00199e5eb36cf068578bf0e63d6f7d6d5307de26ae53d49b784"
@@ -472,6 +481,14 @@
   pruneopts = "NT"
   revision = "438578804ca6f31be148c27683afc419ce47c06e"
   version = "v1.3.0"
+
+[[projects]]
+  digest = "1:efe8ddffa78bddbd1d826faf622cca77dbf7ddc72df04077d69a688cac657148"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "NT"
+  revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
+  version = "v1.4.2"
 
 [[projects]]
   digest = "1:49b6e0d199dc20969bf7c9d14647313e1dd1b102178fad4ca999d8a9584edfab"
