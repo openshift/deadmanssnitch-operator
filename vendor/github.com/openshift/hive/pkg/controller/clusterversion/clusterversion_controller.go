@@ -1,25 +1,10 @@
-/*
-Copyright 2019 The Kubernetes Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package clusterversion
 
 import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -37,13 +22,13 @@ import (
 
 	openshiftapiv1 "github.com/openshift/api/config/v1"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	hivemetrics "github.com/openshift/hive/pkg/controller/metrics"
 	controllerutils "github.com/openshift/hive/pkg/controller/utils"
 )
 
 const (
 	clusterVersionObjectName = "version"
-	clusterVersionUnknown    = "undef"
-	adminKubeconfigKey       = "kubeconfig"
+	controllerName           = "clusterversion"
 )
 
 // Add creates a new ClusterDeployment Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -55,8 +40,8 @@ func Add(mgr manager.Manager) error {
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileClusterVersion{
-		Client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
+		Client:                        controllerutils.NewClientWithMetricsOrDie(mgr, controllerName),
+		scheme:                        mgr.GetScheme(),
 		remoteClusterAPIClientBuilder: controllerutils.BuildClusterAPIClientFromKubeconfig,
 	}
 }
@@ -64,7 +49,7 @@ func NewReconciler(mgr manager.Manager) reconcile.Reconciler {
 // AddToManager adds a new Controller to mgr with r as the reconcile.Reconciler
 func AddToManager(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("clusterversion-controller", mgr, controller.Options{Reconciler: r, MaxConcurrentReconciles: 100})
+	c, err := controller.New("clusterversion-controller", mgr, controller.Options{Reconciler: r, MaxConcurrentReconciles: controllerutils.GetConcurrentReconciles()})
 	if err != nil {
 		return err
 	}
@@ -86,12 +71,26 @@ type ReconcileClusterVersion struct {
 	scheme *runtime.Scheme
 	// remoteClusterAPIClientBuilder is a function pointer to the function that builds a client for the
 	// remote cluster's cluster-api
-	remoteClusterAPIClientBuilder func(string) (client.Client, error)
+	remoteClusterAPIClientBuilder func(string, string) (client.Client, error)
 }
 
 // Reconcile reads that state of the cluster for a ClusterDeployment object and syncs the remote ClusterVersion status
 // if the remote cluster is available.
 func (r *ReconcileClusterVersion) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	start := time.Now()
+	cdLog := log.WithFields(log.Fields{
+		"clusterDeployment": request.Name,
+		"namespace":         request.Namespace,
+		"controller":        controllerName,
+	})
+
+	cdLog.Info("reconciling cluster deployment")
+	defer func() {
+		dur := time.Since(start)
+		hivemetrics.MetricControllerReconcileTime.WithLabelValues(controllerName).Observe(dur.Seconds())
+		cdLog.WithField("elapsed", dur).Info("reconcile complete")
+	}()
+
 	// Fetch the ClusterDeployment instance
 	cd := &hivev1.ClusterDeployment{}
 	err := r.Get(context.TODO(), request.NamespacedName, cd)
@@ -104,15 +103,20 @@ func (r *ReconcileClusterVersion) Reconcile(request reconcile.Request) (reconcil
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	cdLog := log.WithFields(log.Fields{
-		"clusterDeployment": cd.Name,
-		"namespace":         cd.Namespace,
-		"controller":        "clusterversion",
-	})
-	cdLog.Info("reconciling cluster version")
-
 	// If the clusterdeployment is deleted, do not reconcile.
 	if cd.DeletionTimestamp != nil {
+		return reconcile.Result{}, nil
+	}
+
+	// If the cluster is unreachable, do not reconcile.
+	if controllerutils.HasUnreachableCondition(cd) {
+		cdLog.Debug("skipping cluster with unreachable condition")
+		return reconcile.Result{}, nil
+	}
+
+	// If the cluster is not installed, do not reconcile.
+	if !cd.Spec.Installed {
+		cdLog.Debug("cluster installation is not complete")
 		return reconcile.Result{}, nil
 	}
 
@@ -126,7 +130,12 @@ func (r *ReconcileClusterVersion) Reconcile(request reconcile.Request) (reconcil
 		cdLog.WithError(err).WithField("secret", fmt.Sprintf("%s/%s", cd.Status.AdminKubeconfigSecret.Name, cd.Namespace)).Error("cannot read secret")
 		return reconcile.Result{}, err
 	}
-	remoteClient, err := r.remoteClusterAPIClientBuilder(string(adminKubeconfigSecret.Data[adminKubeconfigKey]))
+	kubeConfig, err := controllerutils.FixupKubeconfigSecretData(adminKubeconfigSecret.Data)
+	if err != nil {
+		cdLog.WithError(err).Error("cannot fixup kubeconfig for remote cluster")
+		return reconcile.Result{}, err
+	}
+	remoteClient, err := r.remoteClusterAPIClientBuilder(string(kubeConfig), controllerName)
 	if err != nil {
 		cdLog.WithError(err).Error("error building remote cluster-api client connection")
 		return reconcile.Result{}, err

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
+	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
-	hivecontrollerutils "github.com/openshift/hive/pkg/controller/utils"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -64,7 +64,7 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 	}
 
 	// get dms key
-	dmsAPIKey, err := hivecontrollerutils.LoadSecretData(tempClient, DeadMansSnitchAPISecretName,
+	dmsAPIKey, err := utils.LoadSecretData(tempClient, DeadMansSnitchAPISecretName,
 		DeadMansSnitchOperatorNamespace, DeadMansSnitchAPISecretKey)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		}
 
 		reqLogger.Info("Deleting DMS finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
-		hivecontrollerutils.DeleteFinalizer(instance, DeadMansSnitchFinalizer)
+		utils.DeleteFinalizer(instance, DeadMansSnitchFinalizer)
 		err = r.client.Update(context.TODO(), instance)
 		if err != nil {
 			reqLogger.Error(err, "Error deleting Finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
@@ -191,9 +191,9 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Add finalizer to the ClusterDeployment
-	if !hivecontrollerutils.HasFinalizer(instance, DeadMansSnitchFinalizer) {
+	if !utils.HasFinalizer(instance, DeadMansSnitchFinalizer) {
 		reqLogger.Info("Adding DMS finalizer to ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
-		hivecontrollerutils.AddFinalizer(instance, DeadMansSnitchFinalizer)
+		utils.AddFinalizer(instance, DeadMansSnitchFinalizer)
 		err := r.client.Update(context.TODO(), instance)
 		if err != nil {
 			reqLogger.Error(err, "Error setting Finalizer on ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
@@ -226,7 +226,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		if len(snitches) > 0 {
 			snitch = snitches[0]
 		} else {
-			hiveClusterTag, err := hivecontrollerutils.LoadSecretData(r.client, DeadMansSnitchAPISecretName,
+			hiveClusterTag, err := utils.LoadSecretData(r.client, DeadMansSnitchAPISecretName,
 				DeadMansSnitchOperatorNamespace, DeadMansSnitchTagKey)
 			if err != nil {
 				reqLogger.Error(err, "Unable to retrieve the hive-cluster-tag from the secret", "Namespace", request.Namespace, "Name", request.Name)
