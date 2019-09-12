@@ -330,17 +330,6 @@
   revision = "77b8897ec79a562e85920134fc65b63300c4d27a"
 
 [[projects]]
-  branch = "master"
-  digest = "1:d22d4f935444a350d35d6673d5dd083c78b17f340c60b22f2a2eb1155edc006b"
-  name = "github.com/openshift/cluster-api"
-  packages = [
-    "pkg/apis/machine/common",
-    "pkg/apis/machine/v1beta1",
-  ]
-  pruneopts = "NT"
-  revision = "a5c241a4a175dba2960ab30047f3c55ca89168fa"
-
-[[projects]]
   branch = "ovn-dev"
   digest = "1:701d092cac245697a21c7dc7e11e86880dca1061d13e18cb9dd243066a4cda7f"
   name = "github.com/openshift/cluster-network-operator"
@@ -349,16 +338,15 @@
   revision = "c226dcab667ea57774c81b73102f08bff5c2d518"
 
 [[projects]]
-  branch = "master"
-  digest = "1:4cde2d592b10153ab0b416220e99504aef6f485a2940522a23530203681febca"
+  digest = "1:65c20fc3e7c181461f161c92725c6a0f99ca7231b09549358af3d7f8664bab44"
   name = "github.com/openshift/hive"
   packages = [
     "pkg/apis",
     "pkg/apis/hive/v1alpha1",
-    "pkg/controller/utils",
+    "pkg/apis/hive/v1alpha1/aws",
   ]
   pruneopts = "NT"
-  revision = "75ba8f5c5122abb2a1da908443c6c9b5e9129479"
+  revision = "7776e82850f8803419ecd92d13c7e09c6cc2cc41"
 
 [[projects]]
   digest = "1:341f4eaa5439f00199e5eb36cf068578bf0e63d6f7d6d5307de26ae53d49b784"
@@ -729,7 +717,6 @@
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
-    "pkg/apis/meta/v1/validation",
     "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
@@ -988,7 +975,6 @@
     "github.com/openshift/api/route/v1",
     "github.com/openshift/hive/pkg/apis",
     "github.com/openshift/hive/pkg/apis/hive/v1alpha1",
-    "github.com/openshift/hive/pkg/controller/utils",
     "github.com/openshift/operator-custom-metrics/pkg/metrics",
     "github.com/operator-framework/operator-sdk/pkg/leader",
     "github.com/operator-framework/operator-sdk/pkg/log/zap",
@@ -1002,6 +988,7 @@
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/types",
+    "k8s.io/apimachinery/pkg/util/sets",
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/code-generator/cmd/client-gen",
