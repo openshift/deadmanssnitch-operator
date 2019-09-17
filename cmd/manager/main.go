@@ -123,11 +123,14 @@ func main() {
 	}
 
 	metricsServer := metrics.NewBuilder().WithPort(metricsPort).WithPath(metricsPath).
-		WithCollectors(localmetrics.MetricDeadMansSnitchHeartbeat).
+		WithCollectors(localmetrics.MetricsList).
+		WithRoute().
 		GetConfig()
+
 	// Configure metrics if it errors log the error but continue
 	if err := metrics.ConfigureMetrics(context.TODO(), *metricsServer); err != nil {
 		log.Error(err, "Failed to configure Metrics")
+		os.Exit(1)
 	}
 
 	log.Info("Starting the Cmd.")
