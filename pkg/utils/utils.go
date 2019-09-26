@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/openshift/deadmanssnitch-operator/config"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -118,6 +119,39 @@ func DeleteSyncSet(name string, namespace string, client client.Client, reqLogge
 			return nil
 		}
 		// Error finding the syncset, requeue
+		return err
+	}
+
+	return nil
+}
+
+// DeleteRefSecret deletes Secret which referenced by SyncSet
+func DeleteRefSecret(name string, namespace string, client client.Client, reqLogger logr.Logger) error {
+	secret := &corev1.Secret{}
+	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, secret)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return nil
+		}
+		// Error finding the secret, requeue
+		return err
+	}
+
+	// Delete the secret
+	reqLogger.Info("Deleting Referenced Secret", "Namespace", namespace, "Name", name)
+	err = client.Delete(context.TODO(), secret)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return nil
+		}
+		// Error finding the secret, requeue
 		return err
 	}
 

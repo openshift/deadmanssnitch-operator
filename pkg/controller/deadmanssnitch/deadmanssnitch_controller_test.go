@@ -7,7 +7,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"testing"
@@ -40,9 +39,16 @@ const (
 
 type SyncSetEntry struct {
 	name                     string
+	referencedSecretName     string
+	clusterDeploymentRefName string
+}
+
+type SecretEntry struct {
+	name                     string
 	snitchURL                string
 	clusterDeploymentRefName string
 }
+
 type mocks struct {
 	fakeKubeClient client.Client
 	mockCtrl       *gomock.Controller
@@ -59,37 +65,6 @@ func setupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
 	mocks.mockDMSClient = mockdms.NewMockClient(mocks.mockCtrl)
 
 	return mocks
-}
-
-func rawToSecret(raw runtime.RawExtension) *corev1.Secret {
-	decoder := scheme.Codecs.UniversalDecoder(corev1.SchemeGroupVersion)
-
-	obj, _, err := decoder.Decode(raw.Raw, nil, nil)
-	if err != nil {
-		// okay, not everything in the syncset is necessarily a secret
-		return nil
-	}
-	s, ok := obj.(*corev1.Secret)
-	if ok {
-		return s
-	}
-
-	return nil
-}
-
-// decode code to try to decode secret?  copied from somewhere to help..
-func decode(t *testing.T, data []byte) (runtime.Object, metav1.Object, error) {
-	decoder := scheme.Codecs.UniversalDecoder(corev1.SchemeGroupVersion)
-	r, _, err := decoder.Decode(data, nil, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	obj, err := meta.Accessor(r)
-	if err != nil {
-		return nil, nil, err
-	}
-	return r, obj, nil
 }
 
 // return a secret that matches the secret found in the hive namespace
@@ -141,6 +116,19 @@ func testSyncSet() *hivev1alpha1.SyncSet {
 					Name: testClusterName,
 				},
 			},
+		},
+	}
+}
+
+// testReferencedSecret returns a Secret for SyncSet to reference
+func testReferencedSecret() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName + config.RefSecretPostfix,
+			Namespace: testNamespace,
+		},
+		Data: map[string][]byte{
+			config.KeySnitchURL: []byte(testSnitchURL),
 		},
 	}
 }
@@ -225,7 +213,9 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		name             string
 		localObjects     []runtime.Object
 		expectedSyncSets *SyncSetEntry
+		expectedSecret   *SecretEntry
 		verifySyncSets   func(client.Client, *SyncSetEntry) bool
+		verifySecret     func(client.Client, *SecretEntry) bool
 		setupDMSMock     func(*mockdms.MockClientMockRecorder)
 	}{
 
@@ -237,10 +227,16 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			},
 			expectedSyncSets: &SyncSetEntry{
 				name:                     testClusterName + config.SyncSetPostfix,
+				referencedSecretName:     testClusterName + config.RefSecretPostfix,
+				clusterDeploymentRefName: testClusterName,
+			},
+			expectedSecret: &SecretEntry{
+				name:                     testClusterName + config.RefSecretPostfix,
 				snitchURL:                testSnitchURL,
 				clusterDeploymentRefName: testClusterName,
 			},
 			verifySyncSets: verifySyncSetExists,
+			verifySecret:   verifySecretExists,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL, Tags: []string{testTag}}, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
@@ -259,7 +255,9 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				deletedClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 				r.Delete(gomock.Any()).Return(true, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
@@ -273,7 +271,9 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				uninstalledClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 			},
 		},
@@ -283,7 +283,9 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				nonManagedClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 			},
 		},
@@ -293,7 +295,9 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				noalertsManagedClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 			},
 		},
@@ -328,6 +332,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 
 			assert.NoError(t, err, "Unexpected Error")
 			assert.True(t, test.verifySyncSets(mocks.fakeKubeClient, test.expectedSyncSets))
+			assert.True(t, test.verifySecret(mocks.fakeKubeClient, test.expectedSecret))
 		})
 	}
 }
@@ -340,6 +345,7 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 			testClusterDeployment(),
 			testSecret(),
 			testSyncSet(),
+			testReferencedSecret(),
 			testOtherSyncSet(),
 		})
 		//test.setupDMSMock(mocks.mockDMSClient.EXPECT())
@@ -407,6 +413,7 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 		// ASSERT (no unexpected syncset)
 		assert.NoError(t, err, "Unexpected Error")
 		assert.True(t, verifyNoSyncSet(mocks.fakeKubeClient, &SyncSetEntry{}))
+		assert.True(t, verifyNoSecret(mocks.fakeKubeClient, &SecretEntry{}))
 		// verify the "other" syncset didn't get deleted
 		assert.True(t, verifyOtherSyncSetExists(mocks.fakeKubeClient, &SyncSetEntry{}))
 	})
@@ -429,12 +436,34 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	if expected.clusterDeploymentRefName != ss.Spec.ClusterDeploymentRefs[0].Name {
 		return false
 	}
-	secret := rawToSecret(ss.Spec.Resources[0])
-	if secret == nil {
+
+	if expected.referencedSecretName != ss.Spec.SecretReferences[0].Source.Name {
 		return false
 	}
 
-	return string(secret.Data[config.KeySnitchURL]) == expected.snitchURL
+	return true
+}
+
+func verifySecretExists(c client.Client, expected *SecretEntry) bool {
+	secret := corev1.Secret{}
+
+	err := c.Get(context.TODO(),
+		types.NamespacedName{Name: expected.name, Namespace: testNamespace},
+		&secret)
+
+	if err != nil {
+		return false
+	}
+
+	if expected.name != secret.Name {
+		return false
+	}
+
+	if expected.snitchURL != string(secret.Data["SNITCH_URL"]) {
+		return false
+	}
+
+	return true
 }
 
 func verifyNoSyncSet(c client.Client, expected *SyncSetEntry) bool {
@@ -457,6 +486,26 @@ func verifyNoSyncSet(c client.Client, expected *SyncSetEntry) bool {
 	}
 
 	// if we got here, it's good.  list was empty or everything passed
+	return true
+}
+
+func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
+	secretList := &corev1.SecretList{}
+	opts := client.ListOptions{Namespace: testNamespace}
+	err := c.List(context.TODO(), &opts, secretList)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return true
+		}
+	}
+
+	for _, secret := range secretList.Items {
+		if secret.Name == testClusterName+config.RefSecretPostfix {
+			return false
+		}
+	}
+
 	return true
 }
 
