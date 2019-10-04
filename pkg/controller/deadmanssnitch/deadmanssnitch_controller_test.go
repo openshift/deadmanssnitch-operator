@@ -292,9 +292,77 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			assert.NoError(t, err, "Unexpected Error")
 			assert.True(t, test.verifySyncSets(mocks.fakeKubeClient, test.expectedSyncSets))
 		})
-
 	}
+}
 
+func TestRemoveAlertsAfterCreate(t *testing.T) {
+	// test going from having alerts to not having alerts
+	t.Run("Test Managed Cluster that later sets noalerts label", func(t *testing.T) {
+		// ARRANGE
+		mocks := setupDefaultMocks(t, []runtime.Object{
+			testClusterDeployment(),
+			testSecret(),
+		})
+		//test.setupDMSMock(mocks.mockDMSClient.EXPECT())
+		setupDMSMock :=
+			func(r *mockdms.MockClientMockRecorder) {
+				// create
+				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL, Tags: []string{testTag}}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{
+						CheckInURL: testSnitchURL,
+						Status:     "pending",
+					},
+				}, nil).Times(1)
+				r.CheckIn(gomock.Any()).Return(nil).Times(1)
+
+				// delete
+				r.Delete(gomock.Any()).Return(true, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{Token: testSnitchToken},
+				}, nil).Times(1)
+			}
+
+		setupDMSMock(mocks.mockDMSClient.EXPECT())
+
+		// This is necessary for the mocks to report failures like methods not being called an expected number of times.
+		// after mocks is defined
+		defer mocks.mockCtrl.Finish()
+
+		rdms := &ReconcileDeadMansSnitch{
+			client:    mocks.fakeKubeClient,
+			scheme:    scheme.Scheme,
+			dmsclient: mocks.mockDMSClient,
+		}
+
+		// ACT (create)
+		_, err := rdms.Reconcile(reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      testClusterName,
+				Namespace: testNamespace,
+			},
+		})
+
+		// UPDATE (noalerts)
+		// can't set to empty string, it won't update.. value does not matter
+		clusterDeployment := &hivev1alpha1.ClusterDeployment{}
+		err = mocks.fakeKubeClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: testClusterName}, clusterDeployment)
+		clusterDeployment.Labels[ClusterDeploymentNoalertsLabel] = "X"
+		err = mocks.fakeKubeClient.Update(context.TODO(), clusterDeployment)
+
+		// ACT (delete)
+		_, err = rdms.Reconcile(reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      testClusterName,
+				Namespace: testNamespace,
+			},
+		})
+
+		// ASSERT (no syncset)
+		assert.NoError(t, err, "Unexpected Error")
+		assert.True(t, verifyNoSyncSet(mocks.fakeKubeClient, &SyncSetEntry{}))
+	})
 }
 
 func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
