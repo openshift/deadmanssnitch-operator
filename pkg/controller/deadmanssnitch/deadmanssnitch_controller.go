@@ -3,6 +3,7 @@ package deadmanssnitch
 import (
 	"context"
 
+	"github.com/go-logr/logr"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
@@ -154,10 +155,10 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, nil
 	}
 
-	// Return if alerts are disabled on the cluster
+	// Cleanup DMS then return if alerts are disabled on the cluster
 	if _, ok := instance.Labels[ClusterDeploymentNoalertsLabel]; ok {
 		reqLogger.Info("Managed cluster with Alerts disabled", "Namespace", request.Namespace, "Name", request.Name)
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, deleteDMS(r, request, instance, reqLogger)
 	}
 
 	// cluster isn't installed yet, just return
@@ -169,33 +170,8 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	reqLogger.Info("Checking to see if CD is deleted", "Namespace", request.Namespace, "Name", request.Name)
 	// Check to see if the ClusterDeployment is deleted
 	if instance.DeletionTimestamp != nil {
-		// Delete the dms
-		reqLogger.Info("Deleting the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
-		snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
-		snitches, err := r.dmsclient.FindSnitchesByName(snitchName)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		for _, s := range snitches {
-			delStatus, err := r.dmsclient.Delete(s.Token)
-			if !delStatus || err != nil {
-				reqLogger.Info("Failed to delete the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
-				return reconcile.Result{}, err
-			}
-			reqLogger.Info("Deleted the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
-		}
-
-		reqLogger.Info("Deleting DMS finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
-		utils.DeleteFinalizer(instance, DeadMansSnitchFinalizer)
-		err = r.client.Update(context.TODO(), instance)
-		if err != nil {
-			reqLogger.Error(err, "Error deleting Finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
-			return reconcile.Result{}, err
-		}
-
-		// Things should be cleaned up...
-		return reconcile.Result{}, nil
-
+		// cleanup all DMS things
+		return reconcile.Result{}, deleteDMS(r, request, instance, reqLogger)
 	}
 
 	// Add finalizer to the ClusterDeployment
@@ -329,4 +305,48 @@ func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string
 
 	return newSS
 
+}
+
+func deleteDMS(r *ReconcileDeadMansSnitch, request reconcile.Request, instance *hivev1alpha1.ClusterDeployment, reqLogger logr.Logger) error {
+	// only do something if the finalizer is set
+	if !utils.HasFinalizer(instance, DeadMansSnitchFinalizer) {
+		return nil
+	}
+
+	// Delete the dms
+	reqLogger.Info("Deleting the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
+	snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
+	snitches, err := r.dmsclient.FindSnitchesByName(snitchName)
+	if err != nil {
+		return err
+	}
+	for _, s := range snitches {
+		delStatus, err := r.dmsclient.Delete(s.Token)
+		if !delStatus || err != nil {
+			reqLogger.Info("Failed to delete the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
+			return err
+		}
+		reqLogger.Info("Deleted the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
+	}
+
+	reqLogger.Info("Deleting DMS SyncSet", "Namespace", request.Namespace, "Name", request.Name)
+	syncset := &hivev1alpha1.SyncSet{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Namespace: request.Namespace, Name: request.Name + "-dms"}, syncset)
+	if err == nil {
+		err = r.client.Delete(context.TODO(), syncset)
+		if err != nil {
+			reqLogger.Error(err, "Error deleting SyncSet", "Namespace", request.Namespace, "Name", request.Name+"-dms")
+			return err
+		}
+	}
+
+	reqLogger.Info("Deleting DMS finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
+	utils.DeleteFinalizer(instance, DeadMansSnitchFinalizer)
+	err = r.client.Update(context.TODO(), instance)
+	if err != nil {
+		reqLogger.Error(err, "Error deleting Finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
+		return err
+	}
+
+	return nil
 }
