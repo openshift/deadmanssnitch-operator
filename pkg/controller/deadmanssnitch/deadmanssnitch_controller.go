@@ -143,8 +143,6 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	println("managed: " + instance.Labels[ClusterDeploymentManagedLabel])
-
 	// Just return if this is not a managed cluster OR has noalerts label set
 	if val, ok := instance.Labels[ClusterDeploymentManagedLabel]; ok {
 		if val != "true" {
@@ -156,8 +154,6 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
 		return reconcile.Result{}, nil
 	}
-
-	println("noalerts: " + instance.Labels[ClusterDeploymentNoalertsLabel])
 
 	// Cleanup DMS then return if alerts are disabled on the cluster
 	if _, ok := instance.Labels[ClusterDeploymentNoalertsLabel]; ok {
@@ -312,7 +308,6 @@ func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string
 }
 
 func deleteDMS(r *ReconcileDeadMansSnitch, request reconcile.Request, instance *hivev1alpha1.ClusterDeployment, reqLogger logr.Logger) error {
-	println("deleteDMS: " + instance.Labels[ClusterDeploymentNoalertsLabel])
 	// only do something if the finalizer is set
 	if !utils.HasFinalizer(instance, DeadMansSnitchFinalizer) {
 		return nil
