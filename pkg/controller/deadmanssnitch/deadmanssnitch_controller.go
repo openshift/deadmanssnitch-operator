@@ -37,6 +37,8 @@ const (
 	// ClusterDeploymentManagedLabel is the label the clusterdeployment will have that determines
 	// if the cluster is OSD (managed) or now
 	ClusterDeploymentManagedLabel string = "api.openshift.com/managed"
+	// ClusterDeploymentNoalertsLabel is the label the clusterdeployment will have if the cluster should not send alerts
+	ClusterDeploymentNoalertsLabel string = "api.openshift.com/noalerts"
 )
 
 var log = logf.Log.WithName("controller_deadmanssnitch")
@@ -140,7 +142,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	// Just return if this is not a managed cluster
+	// Just return if this is not a managed cluster OR has noalerts label set
 	if val, ok := instance.Labels[ClusterDeploymentManagedLabel]; ok {
 		if val != "true" {
 			reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
@@ -149,6 +151,12 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	} else {
 		// Managed tag is not present which implies it is not a managed cluster
 		reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
+		return reconcile.Result{}, nil
+	}
+
+	// Return if alerts are disabled on the cluster
+	if _, ok := instance.Labels[ClusterDeploymentNoalertsLabel]; ok {
+		reqLogger.Info("Managed cluster with Alerts disabled", "Namespace", request.Namespace, "Name", request.Name)
 		return reconcile.Result{}, nil
 	}
 
