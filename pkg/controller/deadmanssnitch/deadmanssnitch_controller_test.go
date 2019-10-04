@@ -144,8 +144,29 @@ func uninstalledClusterDeployment() *hivev1alpha1.ClusterDeployment {
 }
 
 // return a ClusterDeployment with Label["managed"] == false
-func nonManagedtClusterDeployment() *hivev1alpha1.ClusterDeployment {
+func nonManagedClusterDeployment() *hivev1alpha1.ClusterDeployment {
 	labelMap := map[string]string{ClusterDeploymentManagedLabel: "false"}
+	cd := hivev1alpha1.ClusterDeployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName,
+			Namespace: testNamespace,
+			Labels:    labelMap,
+		},
+		Spec: hivev1alpha1.ClusterDeploymentSpec{
+			ClusterName: testClusterName,
+		},
+	}
+	cd.Status.Installed = true
+
+	return &cd
+}
+
+// return a ClusterDeployment with Label["noalerts"] == ""
+func noalertsManagedClusterDeployment() *hivev1alpha1.ClusterDeployment {
+	labelMap := map[string]string{
+		ClusterDeploymentManagedLabel:  "true",
+		ClusterDeploymentNoalertsLabel: "",
+	}
 	cd := hivev1alpha1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testClusterName,
@@ -222,7 +243,17 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		{
 			name: "Test Non managed ClusterDeployment",
 			localObjects: []runtime.Object{
-				nonManagedtClusterDeployment(),
+				nonManagedClusterDeployment(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+			},
+		},
+		{
+			name: "Test Managed ClusterDeployment with Alerts disabled",
+			localObjects: []runtime.Object{
+				noalertsManagedClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
 			verifySyncSets:   verifyNoSyncSet,
