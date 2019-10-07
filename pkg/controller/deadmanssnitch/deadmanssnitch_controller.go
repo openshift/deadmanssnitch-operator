@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"github.com/openshift/deadmanssnitch-operator/config"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
@@ -35,11 +36,6 @@ const (
 	DeadMansSnitchAPISecretKey string = "deadmanssnitch-api-key"
 	// DeadMansSnitchTagKey is the secret where to fetch the DMS API Key
 	DeadMansSnitchTagKey string = "hive-cluster-tag"
-	// ClusterDeploymentManagedLabel is the label the clusterdeployment will have that determines
-	// if the cluster is OSD (managed) or now
-	ClusterDeploymentManagedLabel string = "api.openshift.com/managed"
-	// ClusterDeploymentNoalertsLabel is the label the clusterdeployment will have if the cluster should not send alerts
-	ClusterDeploymentNoalertsLabel string = "api.openshift.com/noalerts"
 )
 
 var log = logf.Log.WithName("controller_deadmanssnitch")
@@ -130,47 +126,14 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	reqLogger.Info("Reconciling DeadMansSnitch")
 
 	// Fetch the ClusterDeployment instance
-	instance := &hivev1alpha1.ClusterDeployment{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	processCD, instance, err := utils.CheckClusterDeployment(request, r.client, reqLogger)
+
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
+		// something went wrong, requeue
 		return reconcile.Result{}, err
 	}
 
-	// Just return if this is not a managed cluster OR has noalerts label set
-	if val, ok := instance.Labels[ClusterDeploymentManagedLabel]; ok {
-		if val != "true" {
-			reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
-			return reconcile.Result{}, nil
-		}
-	} else {
-		// Managed tag is not present which implies it is not a managed cluster
-		reqLogger.Info("Not a managed cluster", "Namespace", request.Namespace, "Name", request.Name)
-		return reconcile.Result{}, nil
-	}
-
-	// Cleanup DMS then return if alerts are disabled on the cluster
-	if _, ok := instance.Labels[ClusterDeploymentNoalertsLabel]; ok {
-		reqLogger.Info("Managed cluster with Alerts disabled", "Namespace", request.Namespace, "Name", request.Name)
-		return reconcile.Result{}, deleteDMS(r, request, instance, reqLogger)
-	}
-
-	// cluster isn't installed yet, just return
-	if !instance.Status.Installed {
-		// Cluster isn't installed yet, return
-		reqLogger.Info("Cluster installation is not complete, returning...", "Namespace", request.Namespace, "Name", request.Name)
-		return reconcile.Result{}, nil
-	}
-	reqLogger.Info("Checking to see if CD is deleted", "Namespace", request.Namespace, "Name", request.Name)
-	// Check to see if the ClusterDeployment is deleted
-	if instance.DeletionTimestamp != nil {
-		// cleanup all DMS things
+	if !processCD {
 		return reconcile.Result{}, deleteDMS(r, request, instance, reqLogger)
 	}
 
@@ -191,7 +154,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, nil
 	}
 
-	ssName := request.Name + "-dms"
+	ssName := request.Name + config.SyncSetPostfix
 	// Check to see if the SyncSet exists
 	err = r.client.Get(context.TODO(),
 		types.NamespacedName{Name: ssName, Namespace: request.Namespace},
@@ -260,17 +223,17 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Info("Done creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
 	} else {
 		reqLogger.Info("SyncSet Already Present, nothing to do here...", "Namespace", request.Namespace, "Name", request.Name)
+
 	}
 
 	return reconcile.Result{}, nil
-
 }
 
 func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string) *hivev1alpha1.SyncSet {
 
 	newSS := &hivev1alpha1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterDeploymentName + "-dms",
+			Name:      clusterDeploymentName + config.SyncSetPostfix,
 			Namespace: namespace,
 		},
 		Spec: hivev1alpha1.SyncSetSpec{
@@ -294,7 +257,7 @@ func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string
 								Namespace: "openshift-monitoring",
 							},
 							Data: map[string][]byte{
-								"SNITCH_URL": []byte(snitchURL),
+								config.KeySnitchURL: []byte(snitchURL),
 							},
 						},
 					},
@@ -330,14 +293,10 @@ func deleteDMS(r *ReconcileDeadMansSnitch, request reconcile.Request, instance *
 	}
 
 	reqLogger.Info("Deleting DMS SyncSet", "Namespace", request.Namespace, "Name", request.Name)
-	syncset := &hivev1alpha1.SyncSet{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Namespace: request.Namespace, Name: request.Name + "-dms"}, syncset)
-	if err == nil {
-		err = r.client.Delete(context.TODO(), syncset)
-		if err != nil {
-			reqLogger.Error(err, "Error deleting SyncSet", "Namespace", request.Namespace, "Name", request.Name+"-dms")
-			return err
-		}
+	err = utils.DeleteSyncSet(request.Name+config.SyncSetPostfix, request.Namespace, r.client, reqLogger)
+	if err != nil {
+		reqLogger.Error(err, "Error deleting SyncSet", "Namespace", request.Namespace, "Name", request.Name+config.SyncSetPostfix)
+		return err
 	}
 
 	reqLogger.Info("Deleting DMS finalizer from ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
