@@ -17,4 +17,12 @@ package config
 const (
 	OperatorName      string = "deadmanssnitch-operator"
 	OperatorNamespace string = "deadmanssnitch-operator"
+	SyncSetPostfix    string = "-dms"
+	KeySnitchURL      string = "SNITCH_URL"
+
+	// ClusterDeploymentManagedLabel is the label the clusterdeployment will have that determines
+	// if the cluster is OSD (managed) or not
+	ClusterDeploymentManagedLabel string = "api.openshift.com/managed"
+	// ClusterDeploymentNoalertsLabel is the label the clusterdeployment will have if the cluster should not send alerts
+	ClusterDeploymentNoalertsLabel string = "api.openshift.com/noalerts"
 )
