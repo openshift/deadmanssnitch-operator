@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 
+	operatorconfig "github.com/openshift/deadmanssnitch-operator/config"
 	"github.com/openshift/deadmanssnitch-operator/pkg/apis"
 	"github.com/openshift/deadmanssnitch-operator/pkg/controller"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
@@ -125,6 +126,7 @@ func main() {
 	metricsServer := metrics.NewBuilder().WithPort(metricsPort).WithPath(metricsPath).
 		WithCollectors(localmetrics.MetricsList).
 		WithRoute().
+		WithServiceName(operatorconfig.OperatorName).
 		GetConfig()
 
 	// Configure metrics if it errors log the error but continue
