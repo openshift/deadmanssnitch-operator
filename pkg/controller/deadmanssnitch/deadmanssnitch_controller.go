@@ -155,13 +155,44 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	ssName := request.Name + config.SyncSetPostfix
+	refSecretName := request.Name + config.RefSecretPostfix
+
 	// Check to see if the SyncSet exists
 	err = r.client.Get(context.TODO(),
 		types.NamespacedName{Name: ssName, Namespace: request.Namespace},
 		&hivev1alpha1.SyncSet{})
+
 	if errors.IsNotFound(err) {
 		// create new DMS SyncSet
 		reqLogger.Info("SyncSet not found, Creating a new SynsSet", "Namespace", request.Namespace, "Name", request.Name)
+
+		newSS := newSyncSet(request.Namespace, refSecretName, request.Name)
+
+		// ensure the syncset gets cleaned up when the clusterdeployment is deleted
+		if err := controllerutil.SetControllerReference(instance, newSS, r.scheme); err != nil {
+			reqLogger.Error(err, "Error setting controller reference on syncset", "Namespace", request.Namespace, "Name", request.Name)
+			return reconcile.Result{}, err
+		}
+		if err := r.client.Create(context.TODO(), newSS); err != nil {
+			reqLogger.Error(err, "Error creating syncset", "Namespace", request.Namespace, "Name", request.Name)
+			return reconcile.Result{}, err
+		}
+		reqLogger.Info("Done creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
+
+	} else {
+		reqLogger.Info("SyncSet Already Present, nothing to do here...", "Namespace", request.Namespace, "Name", request.Name)
+		// return directly if the syscset already existed
+		return reconcile.Result{}, nil
+	}
+
+	// Check if the secret exists
+	err = r.client.Get(context.TODO(),
+		types.NamespacedName{Name: refSecretName, Namespace: request.Namespace},
+		&corev1.Secret{})
+
+	if errors.IsNotFound(err) {
+		// create new secret which will be referenced by SyncSet
+		reqLogger.Info("Secret not found, Creating a new Secret", "Namespace", request.Namespace, "Name", request.Name)
 
 		snitchName := instance.Spec.ClusterName + "." + instance.Spec.BaseDomain
 		snitches, err := r.dmsclient.FindSnitchesByName(snitchName)
@@ -208,28 +239,27 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, err
 		}
 
-		newSS := newSyncSet(request.Namespace, request.Name, ReSnitches[0].CheckInURL)
+		newRefSecret := newRefSecret(request.Namespace, refSecretName, ReSnitches[0].CheckInURL)
 
-		// ensure the syncset gets cleaned up when the clusterdeployment is deleted
-		if err := controllerutil.SetControllerReference(instance, newSS, r.scheme); err != nil {
-			reqLogger.Error(err, "Error setting controller reference on syncset", "Namespace", request.Namespace, "Name", request.Name)
+		// set the owner reference about the secret for gabage collection
+		if err := controllerutil.SetControllerReference(instance, newRefSecret, r.scheme); err != nil {
+			reqLogger.Error(err, "Error setting controller refernce on secret", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, err
 		}
-		if err := r.client.Create(context.TODO(), newSS); err != nil {
-			reqLogger.Error(err, "Error creating syncset", "Namespace", request.Namespace, "Name", request.Name)
+		// Create the secret
+		if err := r.client.Create(context.TODO(), newRefSecret); err != nil {
+			reqLogger.Error(err, "Failed to create secret", "Namespace", request.Namespace, "Name", request.Name)
 			return reconcile.Result{}, err
 		}
-
-		reqLogger.Info("Done creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
+		reqLogger.Info("Secret created in the Namespace", "Namespace", request.Namespace, "Name", request.Name)
 	} else {
-		reqLogger.Info("SyncSet Already Present, nothing to do here...", "Namespace", request.Namespace, "Name", request.Name)
-
+		reqLogger.Info("Secret already present, do not need to create...", "Namespace", request.Namespace, "Name", request.Name)
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string) *hivev1alpha1.SyncSet {
+func newSyncSet(namespace string, refSecretName string, clusterDeploymentName string) *hivev1alpha1.SyncSet {
 
 	newSS := &hivev1alpha1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -244,21 +274,17 @@ func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string
 			},
 			SyncSetCommonSpec: hivev1alpha1.SyncSetCommonSpec{
 				ResourceApplyMode: "sync",
-				Resources: []runtime.RawExtension{
+				// Use SecretReference here which comsume the secret in the cluster namespace,
+				// instead of embed the secret in the SyncSet directly
+				SecretReferences: []hivev1alpha1.SecretReference{
 					{
-						Object: &corev1.Secret{
-							Type: "Opaque",
-							TypeMeta: metav1.TypeMeta{
-								Kind:       "Secret",
-								APIVersion: "v1",
-							},
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "dms-secret",
-								Namespace: "openshift-monitoring",
-							},
-							Data: map[string][]byte{
-								config.KeySnitchURL: []byte(snitchURL),
-							},
+						Source: corev1.ObjectReference{
+							Name:      refSecretName,
+							Namespace: namespace,
+						},
+						Target: corev1.ObjectReference{
+							Name:      "dms-secret",
+							Namespace: "openshift-monitoring",
 						},
 					},
 				},
@@ -267,6 +293,24 @@ func newSyncSet(namespace string, clusterDeploymentName string, snitchURL string
 	}
 
 	return newSS
+
+}
+
+// Create a new secret in the cluster namespace which contains the snitch_url as data
+// and will be referenced by SyncSet
+func newRefSecret(namespace string, name string, snitchURL string) *corev1.Secret {
+
+	newRefSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			config.KeySnitchURL: []byte(snitchURL),
+		},
+	}
+
+	return newRefSecret
 
 }
 
@@ -292,10 +336,19 @@ func deleteDMS(r *ReconcileDeadMansSnitch, request reconcile.Request, instance *
 		reqLogger.Info("Deleted the DMS from api.deadmanssnitch.com", "Namespace", request.Namespace, "Name", request.Name)
 	}
 
+	// Delete the SyncSet
 	reqLogger.Info("Deleting DMS SyncSet", "Namespace", request.Namespace, "Name", request.Name)
 	err = utils.DeleteSyncSet(request.Name+config.SyncSetPostfix, request.Namespace, r.client, reqLogger)
 	if err != nil {
 		reqLogger.Error(err, "Error deleting SyncSet", "Namespace", request.Namespace, "Name", request.Name+config.SyncSetPostfix)
+		return err
+	}
+
+	// Delete the referenced secret
+	reqLogger.Info("Deleting DMS referenced secret", "Namespace", request.Namespace, "Name", request.Name)
+	err = utils.DeleteRefSecret(request.Name+config.RefSecretPostfix, request.Namespace, r.client, reqLogger)
+	if err != nil {
+		reqLogger.Error(err, "Error deleting secret", "Namespace", request.Namespace, "Name", request.Name)
 		return err
 	}
 
@@ -308,4 +361,5 @@ func deleteDMS(r *ReconcileDeadMansSnitch, request reconcile.Request, instance *
 	}
 
 	return nil
+
 }
