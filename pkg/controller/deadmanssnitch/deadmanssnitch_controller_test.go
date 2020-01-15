@@ -186,11 +186,11 @@ func nonManagedClusterDeployment() *hivev1alpha1.ClusterDeployment {
 	return &cd
 }
 
-// return a ClusterDeployment with Label["noalerts"] == ""
+// return a ClusterDeployment with Label["noalerts"] == "true"
 func noalertsManagedClusterDeployment() *hivev1alpha1.ClusterDeployment {
 	labelMap := map[string]string{
 		config.ClusterDeploymentManagedLabel:  "true",
-		config.ClusterDeploymentNoalertsLabel: "",
+		config.ClusterDeploymentNoalertsLabel: "true",
 	}
 	cd := hivev1alpha1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -378,10 +378,9 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 		})
 
 		// UPDATE (noalerts)
-		// can't set to empty string, it won't update.. value does not matter
 		clusterDeployment := &hivev1alpha1.ClusterDeployment{}
 		err = mocks.fakeKubeClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: testClusterName}, clusterDeployment)
-		clusterDeployment.Labels[config.ClusterDeploymentNoalertsLabel] = "X"
+		clusterDeployment.Labels[config.ClusterDeploymentNoalertsLabel] = "true"
 		err = mocks.fakeKubeClient.Update(context.TODO(), clusterDeployment)
 
 		// Act (delete) [2x because was seeing other SyncSet's getting deleted]
