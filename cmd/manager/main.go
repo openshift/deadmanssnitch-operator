@@ -13,7 +13,7 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	"github.com/openshift/operator-custom-metrics/pkg/metrics"
 
-	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 
 	//	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -107,7 +107,7 @@ func main() {
 	}
 
 	// Setup hive scheme
-	if err := hivev1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := hivev1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
