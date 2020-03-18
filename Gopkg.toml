@@ -68,8 +68,8 @@ required = [
 
 [[constraint]]
   name = "github.com/openshift/hive"
-  revision = "1c37153bc9a1aae16dc1a40a90328a2e2a13d1ab"
-  
+  revision = "8b1c393442db7f14c3b7d9ec79619aa409d1159b"
+
 [prune]
   go-tests = true
   non-go = true

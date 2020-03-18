@@ -16,7 +16,7 @@ import (
 	mockdms "github.com/openshift/deadmanssnitch-operator/pkg/dmsclient/mock"
 
 	hiveapis "github.com/openshift/hive/pkg/apis"
-	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -83,34 +83,34 @@ func testSecret() *corev1.Secret {
 }
 
 // return a simple test ClusterDeployment
-func testClusterDeployment() *hivev1alpha1.ClusterDeployment {
+func testClusterDeployment() *hivev1.ClusterDeployment {
 	labelMap := map[string]string{config.ClusterDeploymentManagedLabel: "true"}
 	finalizers := []string{DeadMansSnitchFinalizer}
 
-	cd := hivev1alpha1.ClusterDeployment{
+	cd := hivev1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       testClusterName,
 			Namespace:  testNamespace,
 			Labels:     labelMap,
 			Finalizers: finalizers,
 		},
-		Spec: hivev1alpha1.ClusterDeploymentSpec{
+		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
 		},
 	}
-	cd.Status.Installed = true
+	cd.Spec.Installed = true
 
 	return &cd
 }
 
 // testSyncSet returns a SyncSet for an existing testClusterDeployment to use in testing.
-func testSyncSet() *hivev1alpha1.SyncSet {
-	return &hivev1alpha1.SyncSet{
+func testSyncSet() *hivev1.SyncSet {
+	return &hivev1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testClusterName + config.SyncSetPostfix,
 			Namespace: testNamespace,
 		},
-		Spec: hivev1alpha1.SyncSetSpec{
+		Spec: hivev1.SyncSetSpec{
 			ClusterDeploymentRefs: []corev1.LocalObjectReference{
 				{
 					Name: testClusterName,
@@ -134,13 +134,13 @@ func testReferencedSecret() *corev1.Secret {
 }
 
 // testOtherSyncSet returns a SyncSet that is not for PD for an existing testClusterDeployment to use in testing.
-func testOtherSyncSet() *hivev1alpha1.SyncSet {
-	return &hivev1alpha1.SyncSet{
+func testOtherSyncSet() *hivev1.SyncSet {
+	return &hivev1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testClusterName + testOtherSyncSetPostfix,
 			Namespace: testNamespace,
 		},
-		Spec: hivev1alpha1.SyncSetSpec{
+		Spec: hivev1.SyncSetSpec{
 			ClusterDeploymentRefs: []corev1.LocalObjectReference{
 				{
 					Name: testClusterName,
@@ -151,7 +151,7 @@ func testOtherSyncSet() *hivev1alpha1.SyncSet {
 }
 
 // return a deleted ClusterDeployment
-func deletedClusterDeployment() *hivev1alpha1.ClusterDeployment {
+func deletedClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
 	now := metav1.Now()
 	cd.DeletionTimestamp = &now
@@ -159,50 +159,50 @@ func deletedClusterDeployment() *hivev1alpha1.ClusterDeployment {
 	return cd
 }
 
-// return a ClusterDeployment with Status.installed == false
-func uninstalledClusterDeployment() *hivev1alpha1.ClusterDeployment {
+// return a ClusterDeployment with Spec.Installed == false
+func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
-	cd.Status.Installed = false
+	cd.Spec.Installed = false
 	cd.ObjectMeta.Finalizers = nil // operator will not have set a finalizer if it was never installed
 
 	return cd
 }
 
 // return a ClusterDeployment with Label["managed"] == false
-func nonManagedClusterDeployment() *hivev1alpha1.ClusterDeployment {
+func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	labelMap := map[string]string{config.ClusterDeploymentManagedLabel: "false"}
-	cd := hivev1alpha1.ClusterDeployment{
+	cd := hivev1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testClusterName,
 			Namespace: testNamespace,
 			Labels:    labelMap,
 		},
-		Spec: hivev1alpha1.ClusterDeploymentSpec{
+		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
 		},
 	}
-	cd.Status.Installed = true
+	cd.Spec.Installed = true
 
 	return &cd
 }
 
 // return a ClusterDeployment with Label["noalerts"] == "true"
-func noalertsManagedClusterDeployment() *hivev1alpha1.ClusterDeployment {
+func noalertsManagedClusterDeployment() *hivev1.ClusterDeployment {
 	labelMap := map[string]string{
 		config.ClusterDeploymentManagedLabel:  "true",
 		config.ClusterDeploymentNoalertsLabel: "true",
 	}
-	cd := hivev1alpha1.ClusterDeployment{
+	cd := hivev1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testClusterName,
 			Namespace: testNamespace,
 			Labels:    labelMap,
 		},
-		Spec: hivev1alpha1.ClusterDeploymentSpec{
+		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
 		},
 	}
-	cd.Status.Installed = true
+	cd.Spec.Installed = true
 
 	return &cd
 }
@@ -266,7 +266,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			},
 		},
 		{
-			name: "Test ClusterDeployment Status.Installed == false",
+			name: "Test ClusterDeployment Spec.Installed == false",
 			localObjects: []runtime.Object{
 				uninstalledClusterDeployment(),
 			},
@@ -378,7 +378,7 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 		})
 
 		// UPDATE (noalerts)
-		clusterDeployment := &hivev1alpha1.ClusterDeployment{}
+		clusterDeployment := &hivev1.ClusterDeployment{}
 		err = mocks.fakeKubeClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: testClusterName}, clusterDeployment)
 		clusterDeployment.Labels[config.ClusterDeploymentNoalertsLabel] = "true"
 		err = mocks.fakeKubeClient.Update(context.TODO(), clusterDeployment)
@@ -419,7 +419,7 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 }
 
 func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
-	ss := hivev1alpha1.SyncSet{}
+	ss := hivev1.SyncSet{}
 	err := c.Get(context.TODO(),
 		types.NamespacedName{Name: expected.name, Namespace: testNamespace},
 		&ss)
@@ -436,7 +436,7 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 		return false
 	}
 
-	if expected.referencedSecretName != ss.Spec.SecretReferences[0].Source.Name {
+	if expected.referencedSecretName != ss.Spec.Secrets[0].SourceRef.Name {
 		return false
 	}
 
@@ -466,7 +466,7 @@ func verifySecretExists(c client.Client, expected *SecretEntry) bool {
 }
 
 func verifyNoSyncSet(c client.Client, expected *SyncSetEntry) bool {
-	ssList := &hivev1alpha1.SyncSetList{}
+	ssList := &hivev1.SyncSetList{}
 	opts := client.ListOptions{Namespace: testNamespace}
 	err := c.List(context.TODO(), &opts, ssList)
 
@@ -510,7 +510,7 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 
 // verifyOtherSyncSetExists verifies that there is the "other" SyncSet present
 func verifyOtherSyncSetExists(c client.Client, expected *SyncSetEntry) bool {
-	ssList := &hivev1alpha1.SyncSetList{}
+	ssList := &hivev1.SyncSetList{}
 	opts := client.ListOptions{Namespace: testNamespace}
 	err := c.List(context.TODO(), &opts, ssList)
 
