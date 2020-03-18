@@ -7,7 +7,7 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/config"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
-	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -85,7 +85,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource ClusterDeployment
-	err = c.Watch(&source.Kind{Type: &hivev1alpha1.ClusterDeployment{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &hivev1.ClusterDeployment{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		// Watch for changes to secondary resource Pods and requeue the owner DeadMansSnitch
 		err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &hivev1alpha1.SyncSet{},
+			OwnerType:    &hivev1.SyncSet{},
 		})
 		if err != nil {
 			return err
@@ -160,7 +160,7 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	// Check to see if the SyncSet exists
 	err = r.client.Get(context.TODO(),
 		types.NamespacedName{Name: ssName, Namespace: request.Namespace},
-		&hivev1alpha1.SyncSet{})
+		&hivev1.SyncSet{})
 
 	if errors.IsNotFound(err) {
 		// create new DMS SyncSet
@@ -259,30 +259,30 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 	return reconcile.Result{}, nil
 }
 
-func newSyncSet(namespace string, refSecretName string, clusterDeploymentName string) *hivev1alpha1.SyncSet {
+func newSyncSet(namespace string, refSecretName string, clusterDeploymentName string) *hivev1.SyncSet {
 
-	newSS := &hivev1alpha1.SyncSet{
+	newSS := &hivev1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterDeploymentName + config.SyncSetPostfix,
 			Namespace: namespace,
 		},
-		Spec: hivev1alpha1.SyncSetSpec{
+		Spec: hivev1.SyncSetSpec{
 			ClusterDeploymentRefs: []corev1.LocalObjectReference{
 				{
 					Name: clusterDeploymentName,
 				},
 			},
-			SyncSetCommonSpec: hivev1alpha1.SyncSetCommonSpec{
+			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
 				ResourceApplyMode: "sync",
 				// Use SecretReference here which comsume the secret in the cluster namespace,
 				// instead of embed the secret in the SyncSet directly
-				SecretReferences: []hivev1alpha1.SecretReference{
+				Secrets: []hivev1.SecretMapping{
 					{
-						Source: corev1.ObjectReference{
+						SourceRef: hivev1.SecretReference{
 							Name:      refSecretName,
 							Namespace: namespace,
 						},
-						Target: corev1.ObjectReference{
+						TargetRef: hivev1.SecretReference{
 							Name:      "dms-secret",
 							Namespace: "openshift-monitoring",
 						},
@@ -314,7 +314,7 @@ func newRefSecret(namespace string, name string, snitchURL string) *corev1.Secre
 
 }
 
-func deleteDMS(r *ReconcileDeadMansSnitch, request reconcile.Request, instance *hivev1alpha1.ClusterDeployment, reqLogger logr.Logger) error {
+func deleteDMS(r *ReconcileDeadMansSnitch, request reconcile.Request, instance *hivev1.ClusterDeployment, reqLogger logr.Logger) error {
 	// only do something if the finalizer is set
 	if !utils.HasFinalizer(instance, DeadMansSnitchFinalizer) {
 		return nil

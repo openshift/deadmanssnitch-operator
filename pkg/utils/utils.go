@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/deadmanssnitch-operator/config"
-	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,13 +41,13 @@ func DeleteFinalizer(object metav1.Object, finalizer string) {
 }
 
 // CheckClusterDeployment returns true if the ClusterDeployment is watched by this operator
-func CheckClusterDeployment(request reconcile.Request, client client.Client, reqLogger logr.Logger) (bool, *hivev1alpha1.ClusterDeployment, error) {
+func CheckClusterDeployment(request reconcile.Request, client client.Client, reqLogger logr.Logger) (bool, *hivev1.ClusterDeployment, error) {
 
 	// remove SyncSetPostfix from name to lookup the ClusterDeployment
 	cdName := strings.Replace(request.NamespacedName.Name, config.SyncSetPostfix, "", 1)
 	cdNamespace := request.NamespacedName.Namespace
 
-	clusterDeployment := &hivev1alpha1.ClusterDeployment{}
+	clusterDeployment := &hivev1.ClusterDeployment{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: cdName, Namespace: cdNamespace}, clusterDeployment)
 
 	if err != nil {
@@ -66,7 +66,7 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 		return false, clusterDeployment, nil
 	}
 
-	if !clusterDeployment.Status.Installed {
+	if !clusterDeployment.Spec.Installed {
 		return false, clusterDeployment, nil
 	}
 
@@ -95,7 +95,7 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 
 // DeleteSyncSet deletes a SyncSet
 func DeleteSyncSet(name string, namespace string, client client.Client, reqLogger logr.Logger) error {
-	syncset := &hivev1alpha1.SyncSet{}
+	syncset := &hivev1.SyncSet{}
 	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, syncset)
 
 	if err != nil {
