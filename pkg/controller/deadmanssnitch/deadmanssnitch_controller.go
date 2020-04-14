@@ -273,7 +273,7 @@ func newSyncSet(namespace string, refSecretName string, clusterDeploymentName st
 				},
 			},
 			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
-				ResourceApplyMode: "sync",
+				ResourceApplyMode: hivev1.SyncResourceApplyMode,
 				// Use SecretReference here which comsume the secret in the cluster namespace,
 				// instead of embed the secret in the SyncSet directly
 				Secrets: []hivev1.SecretMapping{
