@@ -20,6 +20,13 @@ spec:
           command:
           - deadmanssnitch-operator
           imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "200Mi"
+              cpu: "20m"
+            limits:
+              memory: "400Mi"
+              cpu: "50m"
           env:
             - name: WATCH_NAMESPACE
               value: ""
