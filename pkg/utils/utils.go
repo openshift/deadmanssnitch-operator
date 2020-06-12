@@ -89,6 +89,14 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 		}
 	}
 
+	// the old way, goes away with https://issues.redhat.com/browse/OSD-4059
+	if val, ok := clusterDeployment.GetLabels()[config.ClusterDeploymentNoalertsLabelOld]; ok {
+		if val == "true" {
+			reqLogger.Info("Managed cluster with Alerts disabled", "Namespace", request.Namespace, "Name", request.Name)
+			return false, clusterDeployment, nil
+		}
+	}
+
 	// made it this far so it's both managed and has alerts enabled
 	return true, clusterDeployment, nil
 }

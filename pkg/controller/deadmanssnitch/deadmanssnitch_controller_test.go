@@ -207,6 +207,26 @@ func noalertsManagedClusterDeployment() *hivev1.ClusterDeployment {
 	return &cd
 }
 
+func noalertsManagedClusterDeploymentOld() *hivev1.ClusterDeployment {
+	labelMap := map[string]string{
+		config.ClusterDeploymentManagedLabel:     "true",
+		config.ClusterDeploymentNoalertsLabelOld: "true",
+	}
+	cd := hivev1.ClusterDeployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName,
+			Namespace: testNamespace,
+			Labels:    labelMap,
+		},
+		Spec: hivev1.ClusterDeploymentSpec{
+			ClusterName: testClusterName,
+		},
+	}
+	cd.Spec.Installed = true
+
+	return &cd
+}
+
 func TestReconcileClusterDeployment(t *testing.T) {
 	hiveapis.AddToScheme(scheme.Scheme)
 	tests := []struct {
@@ -293,6 +313,18 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			name: "Test Create Managed ClusterDeployment with Alerts disabled",
 			localObjects: []runtime.Object{
 				noalertsManagedClusterDeployment(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+			},
+		},
+		{
+			name: "Test Create Managed ClusterDeployment with Alerts disabled (OLD)",
+			localObjects: []runtime.Object{
+				noalertsManagedClusterDeploymentOld(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
 			expectedSecret:   &SecretEntry{},
