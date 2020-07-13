@@ -37,6 +37,7 @@ type Snitch struct {
 	CreatedAt   string   `json:"created_at"`
 	Interval    string   `json:"interval"`
 	AlertType   string   `json:"alert_type"`
+	AlertEmail  []string `json:"alert_email"`
 }
 
 func defaultURL() *url.URL {
