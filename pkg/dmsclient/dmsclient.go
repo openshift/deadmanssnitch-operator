@@ -24,20 +24,26 @@ type Client interface {
 	CheckIn(s Snitch) error
 }
 
+// SnitchType Struct
+type SnitchType struct {
+	Interval string `json:"interval"`
+}
+
 // Snitch Struct
 type Snitch struct {
-	Name        string   `json:"name"`
-	Token       string   `json:"token"`
-	Href        string   `json:"href"`
-	Tags        []string `json:"tags"`
-	Notes       string   `json:"notes"`
-	Status      string   `json:"status"`
-	CheckedInAt string   `json:"checked_in_at"`
-	CheckInURL  string   `json:"check_in_url"`
-	CreatedAt   string   `json:"created_at"`
-	Interval    string   `json:"interval"`
-	AlertType   string   `json:"alert_type"`
-	AlertEmail  []string `json:"alert_email"`
+	Name        string     `json:"name"`
+	Token       string     `json:"token"`
+	Href        string     `json:"href"`
+	Tags        []string   `json:"tags"`
+	Notes       string     `json:"notes"`
+	Status      string     `json:"status"`
+	CheckedInAt string     `json:"checked_in_at"`
+	CheckInURL  string     `json:"check_in_url"`
+	CreatedAt   string     `json:"created_at"`
+	Interval    string     `json:"interval"`
+	AlertType   string     `json:"alert_type"`
+	AlertEmail  []string   `json:"alert_email"`
+	Type        SnitchType `json:"type"`
 }
 
 func defaultURL() *url.URL {
@@ -118,11 +124,12 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 	}
 
 	var snitches []Snitch
-
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitches)
-	err = fmt.Errorf("Error listing all snitches: %v", decodeErr)
-	return snitches, err
+	if decodeErr != nil {
+		err = fmt.Errorf("Error listing all snitches: %v", decodeErr)
+	}
 
+	return snitches, err
 }
 
 //List a single snitch
@@ -141,7 +148,9 @@ func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 	defer resp.Body.Close()
 
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitch)
-	err = fmt.Errorf("Error listing snitch: %v", decodeErr)
+	if decodeErr != nil {
+		err = fmt.Errorf("Error listing snitch: %v", decodeErr)
+	}
 	return snitch, err
 }
 
@@ -160,7 +169,9 @@ func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 	defer resp.Body.Close()
 
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitch)
-	err = fmt.Errorf("Error creating snitch: %v", decodeErr)
+	if decodeErr != nil {
+		err = fmt.Errorf("Error creating snitch: %v", decodeErr)
+	}
 	return snitch, err
 }
 
