@@ -117,8 +117,11 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 	}
 
 	var snitches []Snitch
-	err = json.NewDecoder(resp.Body).Decode(&snitches)
+
+	decodeErr := json.NewDecoder(resp.Body).Decode(&snitches)
+	err = fmt.Errorf("Error listing all snitches: %v", decodeErr)
 	return snitches, err
+
 }
 
 //List a single snitch
@@ -135,8 +138,9 @@ func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 		return snitch, err
 	}
 	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&snitch)
 
+	decodeErr := json.NewDecoder(resp.Body).Decode(&snitch)
+	err = fmt.Errorf("Error listing snitch: %v", decodeErr)
 	return snitch, err
 }
 
@@ -153,8 +157,9 @@ func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 	}
 
 	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&snitch)
 
+	decodeErr := json.NewDecoder(resp.Body).Decode(&snitch)
+	err = fmt.Errorf("Error creating snitch: %v", decodeErr)
 	return snitch, err
 }
 
