@@ -104,6 +104,12 @@ func (c *dmsClient) newRequest(method, path string, body interface{}) (*http.Req
 
 func (c *dmsClient) do(req *http.Request) (*http.Response, error) {
 	resp, err := c.httpClient.Do(req)
+
+	// raise an error if unable to authenticate to DMS service
+	if resp.StatusCode == 401 {
+		err = fmt.Errorf("unauthorized error: please check the deadmanssnitch credentials")
+	}
+
 	if err != nil {
 		return resp, fmt.Errorf("Error calling the API endpoint: %v", err)
 	}
