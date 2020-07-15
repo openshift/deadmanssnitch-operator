@@ -468,7 +468,7 @@ func verifySecretExists(c client.Client, expected *SecretEntry) bool {
 func verifyNoSyncSet(c client.Client, expected *SyncSetEntry) bool {
 	ssList := &hivev1.SyncSetList{}
 	opts := client.ListOptions{Namespace: testNamespace}
-	err := c.List(context.TODO(), &opts, ssList)
+	err := c.List(context.TODO(), ssList, &opts)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -491,7 +491,7 @@ func verifyNoSyncSet(c client.Client, expected *SyncSetEntry) bool {
 func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 	secretList := &corev1.SecretList{}
 	opts := client.ListOptions{Namespace: testNamespace}
-	err := c.List(context.TODO(), &opts, secretList)
+	err := c.List(context.TODO(), secretList, &opts)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -512,7 +512,7 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 func verifyOtherSyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	ssList := &hivev1.SyncSetList{}
 	opts := client.ListOptions{Namespace: testNamespace}
-	err := c.List(context.TODO(), &opts, ssList)
+	err := c.List(context.TODO(), ssList, &opts)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
