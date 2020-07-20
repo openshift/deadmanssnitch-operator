@@ -1,0 +1,16 @@
+apiVersion: deadmansnitch.openshift.io/v1alpha1
+kind: DeadmansSnitchIntegration
+metadata:
+  name: example-deadmanssnitchintegration
+spec:
+  snitchNamePostFix: test
+  dmsAPIKeySecretRef:
+    name: deadmanssnitch-api-key
+    namespace: deadmanssnitch-operator
+  clusterdeploymentSelector:
+    matchLabels:
+        api.openshift.com/test: "true"
+  targetSecretRef:
+    name: dms-secret
+    namespace: test-monitoring
+  tags: [test,test2]

@@ -1,6 +1,7 @@
-kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
 metadata:
+  creationTimestamp: null
   name: deadmanssnitch-operator
 rules:
 - apiGroups:
@@ -14,7 +15,7 @@ rules:
   - configmaps
   - secrets
   verbs:
-  - "*"
+  - '*'
 - apiGroups:
   - ""
   resources:
@@ -29,17 +30,16 @@ rules:
   - replicasets
   - statefulsets
   verbs:
-  - "*"
+  - '*'
 - apiGroups:
   - monitoring.coreos.com
   resources:
   - servicemonitors
   verbs:
-  - "get"
-  - "create"
+  - get
+  - create
 - apiGroups:
   - hive.openshift.io
-  attributeRestrictions: null
   resources:
   - clusterdeployments
   - clusterdeployments/finalizers
@@ -52,7 +52,6 @@ rules:
   - patch
 - apiGroups:
   - hive.openshift.io
-  attributeRestrictions: null
   resources:
   - syncsets
   verbs:
@@ -62,4 +61,16 @@ rules:
   resources:
   - routes
   verbs:
-  - '*' 
+  - '*'
+- apiGroups:
+  - deadmansnitch.openshift.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
