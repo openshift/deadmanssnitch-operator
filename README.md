@@ -16,16 +16,18 @@ metricDeadMansSnitchHeartbeat: Every 5 minutes, makes a request to the Dead Man'
 - Choose a plan that allows enhanced snitch intervals(Private eye or above)
 - Create an API key
 - Create the following secret which is required for deadmanssnitch-operator to create snitches
+
 ```yaml
 apiVersion: v1
-data:
-hive-cluster-tag: <Tag for snitches>
-deadmanssnitch-api-key: <deadmanssnitch API key here>
 kind: Secret
-metadata:
-name: deadmanssnitch-api-key
-namespace: deadmanssnitch-operator
 type: Opaque
+metadata:
+  name: deadmanssnitch-api-key
+  namespace: deadmanssnitch-operator
+data:
+  hive-cluster-tag: <Tag for snitches>
+  deadmanssnitch-api-key: <deadmanssnitch API key here>
 ```
+
 - Build a docker image and replace `REPLACE_IMAGE` [operator.yaml](deploy/operator.yaml) field with that image
 - Deploy using `oc apply -f deploy/`
