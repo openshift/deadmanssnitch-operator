@@ -34,10 +34,7 @@ spec:
             DeadmansSnitchIntegration
           properties:
             clusterdeploymentSelector:
-              description: A label selector is a label query over a set of resources.
-                The result of matchLabels and matchExpressions are ANDed. An empty
-                label selector matches all objects. A null label selector matches
-                no objects.
+              description: A label selector used  to find which clusterdeployment CRs receive a DMS integration
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.

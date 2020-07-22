@@ -10,15 +10,15 @@ import (
 
 // DeadmansSnitchIntegrationSpec defines the desired state of DeadmansSnitchIntegration
 type DeadmansSnitchIntegrationSpec struct {
-	dmsAPIKeySecretRef corev1.SecretReference `json:"dmsAPIKeySecretRef"`
+	DmsAPIKeySecretRef corev1.SecretReference `json:"dmsAPIKeySecretRef"`
 
-	clusterDeploymentSelector metav1.LabelSelector `json:"clusterdeploymentSelector"`
+	ClusterDeploymentSelector metav1.LabelSelector `json:"clusterdeploymentSelector"`
 
-	targetSecretRef corev1.SecretReference `json:"targetSecretRef"`
+	TargetSecretRef corev1.SecretReference `json:"targetSecretRef"`
 
-	tags  []string `json:"tags"`
+	Tags  []string `json:"tags"`
 
-	snitchNamepostFix string `json:"snitchNamePostFix"`
+	SnitchNamepostFix string `json:"snitchNamePostFix"`
 
 }
 
