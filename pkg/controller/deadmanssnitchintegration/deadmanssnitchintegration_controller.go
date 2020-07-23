@@ -2,19 +2,24 @@ package deadmanssnitchintegration
 
 import (
 	"context"
+	"fmt"
 
 	deadmansnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	"github.com/openshift/pagerduty-operator/config"
+
 	// corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+
 	// "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+
 	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,7 +31,7 @@ import (
 const (
 	// DeadMansSnitchFinalizer is used on ClusterDeployments to ensure we run a successful deprovision
 	// job before cleaning up the API object.
-	DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch"
+	
 	// DeadMansSnitchOperatorNamespace is the namespace where this operator will run
 	DeadMansSnitchOperatorNamespace string = "deadmanssnitch-operator"
 	// DeadMansSnitchAPISecretName is the secret Name where to fetch the DMS API Key
@@ -38,7 +43,6 @@ const (
 )
 
 var log = logf.Log.WithName("controller_deadmanssnitchintegration")
-
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
@@ -138,7 +142,6 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	}
 	matchingClusterDeployments, err := r.getMatchingClusterDeployment(dmsi)
 	if err != nil {
-		reqLogger.Info("HELLO WORLD")
 		return reconcile.Result{}, err
 	}
 
@@ -152,11 +155,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 
 	// }
 	for _, clustDeploy := range matchingClusterDeployments.Items {
-		reqLogger.Info("HELLO WORLD2")
-		if !utils.HasFinalizer(&clustDeploy, DeadMansSnitchFinalizer) {
-			reqLogger.Info("helloworld3")
-			r.dmsAddFinalizer(dmsi, request, &clustDeploy)
-			err := r.client.Update(context.TODO(), dmsi)
+		err	=	r.dmsAddFinalizer(dmsi, &clustDeploy)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -164,8 +163,8 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		
 		return reconcile.Result{}, err
 	}
-	return reconcile.Result{}, nil
-}
+
+
 
 func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration) (*hivev1.ClusterDeploymentList, error) {
 
@@ -185,23 +184,29 @@ func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *
 	return matchingClusterDeployments, err
 }
 
-func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, request reconcile.Request, clustDeploy *hivev1.ClusterDeployment) (reconcile.Result, error) {
-
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	//clustDeployID := clustDeploy.Spec.ClusterName
-	if !utils.HasFinalizer(clustDeploy, DeadMansSnitchFinalizer) {
-		reqLogger.Info("DMS finialzer not found add finalizer to clusterDeployment:")
+func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, clustDeploy *hivev1.ClusterDeployment) error {
+	var DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch-" + dmsi.Name
+	if utils.HasFinalizer(clustDeploy, DeadMansSnitchFinalizer) == false{
+		log.Info("Adding finalizer to clusterDeployment:")
+		
 		utils.AddFinalizer(clustDeploy, DeadMansSnitchFinalizer)
 		err := r.client.Update(context.TODO(), clustDeploy)
 		if err != nil {
-			reqLogger.Error(err, "Error setting Finalizer on ClusterDeployment", "Namespace", request.Namespace, "Name", request.Name)
-			return reconcile.Result{}, err
+			// log.Error(err, "Error setting Finalizer for ClusterDeployment" ,clustDeployID)
+			return  err
 		}
+		matchingClusterDeploymentsTest := &hivev1.ClusterDeployment{}
+		err = r.client.Get(context.TODO(),types.NamespacedName{Name: clustDeploy.Name,Namespace: clustDeploy.Namespace},matchingClusterDeploymentsTest)
+		if err != nil{
+			return err
+		}
+		log.Info(fmt.Sprintf("matchclustTest%v",matchingClusterDeploymentsTest))
+
 
 	}
 
-	//reqLogger.Info("DMS Finalizer already exists in clusterDeployment")
-	return reconcile.Result{}, nil
+	//log.Info("DMS Finalizer already exists in clusterDeployment")
+	return nil
 
 }
 
