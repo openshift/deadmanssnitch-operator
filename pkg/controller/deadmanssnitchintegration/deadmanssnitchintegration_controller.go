@@ -2,25 +2,22 @@ package deadmanssnitchintegration
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmansnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
-	"github.com/openshift/pagerduty-operator/config"
 
 	// corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-
 	// "k8s.io/apimachinery/pkg/types"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-
-	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	// "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -29,20 +26,16 @@ import (
 )
 
 const (
-	// DeadMansSnitchFinalizer is used on ClusterDeployments to ensure we run a successful deprovision
-	// job before cleaning up the API object.
-	
 	// DeadMansSnitchOperatorNamespace is the namespace where this operator will run
 	DeadMansSnitchOperatorNamespace string = "deadmanssnitch-operator"
 	// DeadMansSnitchAPISecretName is the secret Name where to fetch the DMS API Key
 	DeadMansSnitchAPISecretName string = "deadmanssnitch-api-key"
 	// DeadMansSnitchAPISecretKey is the secret where to fetch the DMS API Key
 	DeadMansSnitchAPISecretKey string = "deadmanssnitch-api-key"
-	// DeadMansSnitchTagKey is the secret where to fetch the DMS API Key
-	DeadMansSnitchTagKey string = "hive-cluster-tag"
 )
 
 var log = logf.Log.WithName("controller_deadmanssnitchintegration")
+
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
@@ -51,30 +44,16 @@ var log = logf.Log.WithName("controller_deadmanssnitchintegration")
 // Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	newRec, err := newReconciler(mgr)
-	if err != nil {
-		return err
-	}
+	newRec := newReconciler(mgr)
 	return add(mgr, newRec)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
-	tempClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
-	if err != nil {
-		return nil, err
-	}
-	dmsiAPIKey, err := utils.LoadSecretData(tempClient, DeadMansSnitchAPISecretName,
-		DeadMansSnitchOperatorNamespace, DeadMansSnitchAPISecretKey)
-	if err != nil {
-		return nil, err
-	}
-
+func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileDeadmansSnitchIntegration{
-
-		client:    mgr.GetClient(),
-		scheme:    mgr.GetScheme(),
-		dmsclient: dmsclient.NewClient(dmsiAPIKey)}, nil
+		client: mgr.GetClient(),
+		scheme: mgr.GetScheme(),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -111,9 +90,8 @@ var _ reconcile.Reconciler = &ReconcileDeadmansSnitchIntegration{}
 type ReconcileDeadmansSnitchIntegration struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client    client.Client
-	scheme    *runtime.Scheme
-	dmsclient dmsclient.Client
+	client client.Client
+	scheme *runtime.Scheme
 }
 
 // Reconcile reads that state of the cluster for a DeadmansSnitchIntegration object and makes changes based on the state read
@@ -126,7 +104,6 @@ type ReconcileDeadmansSnitchIntegration struct {
 func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling DeadmansSnitchIntegration")
-
 	// Fetch the DeadmansSnitchIntegration dmsi
 	dmsi := &deadmansnitchv1alpha1.DeadmansSnitchIntegration{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, dmsi)
@@ -140,6 +117,14 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	dmsAPIKey, err := utils.LoadSecretData(r.client, dmsi.Spec.DmsAPIKeySecretRef.Name,
+		dmsi.Spec.DmsAPIKeySecretRef.Namespace, DeadMansSnitchAPISecretKey)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	dmsc := dmsclient.NewClient(dmsAPIKey)
+
 	matchingClusterDeployments, err := r.getMatchingClusterDeployment(dmsi)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -155,16 +140,29 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 
 	// }
 	for _, clustDeploy := range matchingClusterDeployments.Items {
-		err	=	r.dmsAddFinalizer(dmsi, &clustDeploy)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
+		err = r.dmsAddFinalizer(dmsi, &clustDeploy)
+		if err != nil {
+			return reconcile.Result{}, err
 		}
-		
-		return reconcile.Result{}, err
+
+		err = r.createSnitch(dmsi, &clustDeploy, dmsc)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// err = r.createSecret(dmsi, dmsc, clustDeploy)
+		// if err != nil {
+		// 	return reconcile.Result{}, err
+		// }
 	}
 
+	// err = r.createSyncSet(dmsi, request)
+	// if err != nil {
+	// 	return reconcile.Result{}, err
+	// }
 
+	return reconcile.Result{}, err
+}
 
 func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration) (*hivev1.ClusterDeploymentList, error) {
 
@@ -186,37 +184,165 @@ func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *
 
 func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, clustDeploy *hivev1.ClusterDeployment) error {
 	var DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch-" + dmsi.Name
-	if utils.HasFinalizer(clustDeploy, DeadMansSnitchFinalizer) == false{
+	if utils.HasFinalizer(clustDeploy, DeadMansSnitchFinalizer) == false {
 		log.Info("Adding finalizer to clusterDeployment:")
-		
 		utils.AddFinalizer(clustDeploy, DeadMansSnitchFinalizer)
 		err := r.client.Update(context.TODO(), clustDeploy)
 		if err != nil {
-			// log.Error(err, "Error setting Finalizer for ClusterDeployment" ,clustDeployID)
-			return  err
-		}
-		matchingClusterDeploymentsTest := &hivev1.ClusterDeployment{}
-		err = r.client.Get(context.TODO(),types.NamespacedName{Name: clustDeploy.Name,Namespace: clustDeploy.Namespace},matchingClusterDeploymentsTest)
-		if err != nil{
 			return err
 		}
-		log.Info(fmt.Sprintf("matchclustTest%v",matchingClusterDeploymentsTest))
-
 
 	}
 
-	//log.Info("DMS Finalizer already exists in clusterDeployment")
 	return nil
 
 }
 
-// func (r *ReconcileDeadmansSnitchIntegration) createDMSSecret(request reconcile.Request) (reconcile.Result,error){
-// 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+// func (r *ReconcileDeadmansSnitchIntegration) createSyncSet(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, request reconcile.Request) error {
+// 	ssName := request.Name + config.SyncSetPostfix
+// 	refSecretName := request.Name + config.RefSecretPostfix
+// 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: request.Namespace}, &hivev1.SyncSet{})
 
-// 	err := r.client.Get(context.TODO(),types.NamespacedName{Name: refSecretName, Namespace: request.Namespace},&corev1.Secret{})
-// 	if err != nil {
-// 		return reconcile.Result{},err
+// 	if errors.IsNotFound(err) {
+// 		log.Info("SyncSet not found, Creating a new SynsSet", "Namespace", request.Namespace, "Name", request.Name)
+
+// 		newSS := newSyncSet(request.Namespace, refSecretName, request.Name)
+// 		if err := controllerutil.SetControllerReference(dmsi, newSS, r.scheme); err != nil {
+// 			log.Error(err, "Error setting controller reference on syncset", "Namespace", request.Namespace, "Name", request.Name)
+// 			return err
+// 		}
+// 		if err := r.client.Create(context.TODO(), newSS); err != nil {
+// 			log.Error(err, "Error creating syncset", "Namespace", request.Namespace, "Name", request.Name)
+// 			return err
+// 		}
+// 		log.Info("Done creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
+
+// 	} else {
+// 		log.Info("SyncSet Already Present, nothing to do here...", "Namespace", request.Namespace, "Name", request.Name)
+// 		// return directly if the syscset already existed
+// 		return nil
 // 	}
-// 	reqLogger.Info("Checking for secret, Secret not found, Creating a new Secret", "Namespace", request.Namespace, "Name", request.Name)
+// 	return nil
+// }
+
+// func newSyncSet(namespace string, refSecretName string, clusterDeploymentName string) *hivev1.SyncSet {
+
+// 	newSS := &hivev1.SyncSet{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      clusterDeploymentName + config.SyncSetPostfix,
+// 			Namespace: namespace,
+// 		},
+// 		Spec: hivev1.SyncSetSpec{
+// 			ClusterDeploymentRefs: []corev1.LocalObjectReference{
+// 				{
+// 					Name: clusterDeploymentName,
+// 				},
+// 			},
+// 			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
+// 				ResourceApplyMode: hivev1.SyncResourceApplyMode,
+// 				// Use SecretReference here which comsume the secret in the cluster namespace,
+// 				// instead of embed the secret in the SyncSet directly
+// 				Secrets: []hivev1.SecretMapping{
+// 					{
+// 						SourceRef: hivev1.SecretReference{
+// 							Name:      refSecretName,
+// 							Namespace: namespace,
+// 						},
+// 						TargetRef: hivev1.SecretReference{
+// 							Name:      "dms-secret",
+// 							Namespace: "openshift-monitoring",
+// 						},
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+
+// 	return newSS
+
+// }
+
+func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
+
+	snitchName := cd.Spec.ClusterName + "." + cd.Spec.BaseDomain + "-" + dmsi.Spec.SnitchNamePostFix
+	snitches, err := dmsc.FindSnitchesByName(snitchName)
+	if err != nil {
+		return err
+	}
+	var snitch dmsclient.Snitch
+	if len(snitches) > 0 {
+		snitch = snitches[0]
+	} else {
+		newSnitch := dmsclient.NewSnitch(snitchName, dmsi.Spec.Tags, "15_minute", "basic")
+		snitch, err = dmsc.Create(newSnitch)
+		if err != nil {
+			return err
+		}
+	}
+	ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
+	if err != nil {
+		return err
+	}
+
+	if len(ReSnitches) > 0 {
+		if ReSnitches[0].Status == "pending" {
+			log.Info("Checking in Snitch ...", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+			// CheckIn snitch
+			err = dmsc.CheckIn(snitch)
+			if err != nil {
+				log.Error(err, "Unable to check in deadman's snitch", "Namespace", dmsi.Namespace, "Name", dmsi.Name, "CheckInURL", snitch.CheckInURL)
+				return err
+			}
+		}
+	} else {
+		log.Error(err, "Unable to get Snitch by name", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+		return err
+	}
+	return nil
+}
+
+// func (r *ReconcileDeadmansSnitchIntegration) createSecret(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, dmsc dmsclient.Client, cd hivev1.ClusterDeployment) error {
+// 	// refSecretName := dmsi.Spec.TargetSecretRef
+// 	err := r.client.Get(context.TODO(),
+// 		types.NamespacedName{Name: dmsi.Spec.TargetSecretRef.Name, Namespace: dmsi.Namespace},
+// 		&corev1.Secret{})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	snitchName := cd.Spec.ClusterName + "." + cd.Spec.BaseDomain + "-" + dmsi.Spec.SnitchNamePostFix
+// 	ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	newRefSecret := newRefSecret(dmsi.Namespace, dmsi.Spec.TargetSecretRef.Name, ReSnitches[0].CheckInURL)
+
+// 	// set the owner reference about the secret for gabage collection
+// 	if err := controllerutil.SetControllerReference(dmsi, newRefSecret, r.scheme); err != nil {
+// 		log.Error(err, "Error setting controller refernce on secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+// 		return err
+// 	}
+// 	// Create the secret
+// 	if err := r.client.Create(context.TODO(), newRefSecret); err != nil {
+// 		log.Error(err, "Failed to create secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func newRefSecret(namespace string, name string, snitchURL string) *corev1.Secret {
+
+// 	newRefSecret := &corev1.Secret{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      name,
+// 			Namespace: namespace,
+// 		},
+// 		Data: map[string][]byte{
+// 			config.KeySnitchURL: []byte(snitchURL),
+// 		},
+// 	}
+
+// 	return newRefSecret
 
 // }
