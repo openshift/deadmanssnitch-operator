@@ -2,6 +2,7 @@ package deadmanssnitchintegration
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmansnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
@@ -9,15 +10,15 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 
-	// corev1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	// "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	// "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -150,16 +151,11 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 			return reconcile.Result{}, err
 		}
 
-		// err = r.createSecret(dmsi, dmsc, clustDeploy)
-		// if err != nil {
-		// 	return reconcile.Result{}, err
-		// }
+		err = r.createSecretAndSyncset(dmsi, dmsc, clustDeploy)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
-
-	// err = r.createSyncSet(dmsi, request)
-	// if err != nil {
-	// 	return reconcile.Result{}, err
-	// }
 
 	return reconcile.Result{}, err
 }
@@ -197,70 +193,6 @@ func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmansnitch
 	return nil
 
 }
-
-// func (r *ReconcileDeadmansSnitchIntegration) createSyncSet(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, request reconcile.Request) error {
-// 	ssName := request.Name + config.SyncSetPostfix
-// 	refSecretName := request.Name + config.RefSecretPostfix
-// 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: request.Namespace}, &hivev1.SyncSet{})
-
-// 	if errors.IsNotFound(err) {
-// 		log.Info("SyncSet not found, Creating a new SynsSet", "Namespace", request.Namespace, "Name", request.Name)
-
-// 		newSS := newSyncSet(request.Namespace, refSecretName, request.Name)
-// 		if err := controllerutil.SetControllerReference(dmsi, newSS, r.scheme); err != nil {
-// 			log.Error(err, "Error setting controller reference on syncset", "Namespace", request.Namespace, "Name", request.Name)
-// 			return err
-// 		}
-// 		if err := r.client.Create(context.TODO(), newSS); err != nil {
-// 			log.Error(err, "Error creating syncset", "Namespace", request.Namespace, "Name", request.Name)
-// 			return err
-// 		}
-// 		log.Info("Done creating a new SyncSet", "Namespace", request.Namespace, "Name", request.Name)
-
-// 	} else {
-// 		log.Info("SyncSet Already Present, nothing to do here...", "Namespace", request.Namespace, "Name", request.Name)
-// 		// return directly if the syscset already existed
-// 		return nil
-// 	}
-// 	return nil
-// }
-
-// func newSyncSet(namespace string, refSecretName string, clusterDeploymentName string) *hivev1.SyncSet {
-
-// 	newSS := &hivev1.SyncSet{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      clusterDeploymentName + config.SyncSetPostfix,
-// 			Namespace: namespace,
-// 		},
-// 		Spec: hivev1.SyncSetSpec{
-// 			ClusterDeploymentRefs: []corev1.LocalObjectReference{
-// 				{
-// 					Name: clusterDeploymentName,
-// 				},
-// 			},
-// 			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
-// 				ResourceApplyMode: hivev1.SyncResourceApplyMode,
-// 				// Use SecretReference here which comsume the secret in the cluster namespace,
-// 				// instead of embed the secret in the SyncSet directly
-// 				Secrets: []hivev1.SecretMapping{
-// 					{
-// 						SourceRef: hivev1.SecretReference{
-// 							Name:      refSecretName,
-// 							Namespace: namespace,
-// 						},
-// 						TargetRef: hivev1.SecretReference{
-// 							Name:      "dms-secret",
-// 							Namespace: "openshift-monitoring",
-// 						},
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-
-// 	return newSS
-
-// }
 
 func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
 
@@ -301,48 +233,121 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmansnitchv1a
 	return nil
 }
 
-// func (r *ReconcileDeadmansSnitchIntegration) createSecret(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, dmsc dmsclient.Client, cd hivev1.ClusterDeployment) error {
-// 	// refSecretName := dmsi.Spec.TargetSecretRef
-// 	err := r.client.Get(context.TODO(),
-// 		types.NamespacedName{Name: dmsi.Spec.TargetSecretRef.Name, Namespace: dmsi.Namespace},
-// 		&corev1.Secret{})
-// 	if err != nil {
-// 		return err
-// 	}
-// 	snitchName := cd.Spec.ClusterName + "." + cd.Spec.BaseDomain + "-" + dmsi.Spec.SnitchNamePostFix
-// 	ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
-// 	if err != nil {
-// 		return err
-// 	}
+func (r *ReconcileDeadmansSnitchIntegration) createSecretAndSyncset(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, dmsc dmsclient.Client, cd hivev1.ClusterDeployment) error {
+	dmsSecret := cd.Spec.ClusterName + "-" + dmsi.Spec.SnitchNamePostFix + "-" + "dms-secret"
+	log.Info("SECRET")
+	log.Info(dmsSecret)
+	err := r.client.Get(context.TODO(),
+		types.NamespacedName{Name: dmsSecret, Namespace: dmsi.Namespace},
+		&corev1.Secret{})
+	if errors.IsNotFound(err) {
+		snitchName := cd.Spec.ClusterName + "." + cd.Spec.BaseDomain + "-" + dmsi.Spec.SnitchNamePostFix
+		ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
+		log.Info(fmt.Sprintf("SNITCHES %v", ReSnitches))
 
-// 	newRefSecret := newRefSecret(dmsi.Namespace, dmsi.Spec.TargetSecretRef.Name, ReSnitches[0].CheckInURL)
+		if err != nil {
+			return err
+		}
+		for _, CheckInURL := range ReSnitches {
 
-// 	// set the owner reference about the secret for gabage collection
-// 	if err := controllerutil.SetControllerReference(dmsi, newRefSecret, r.scheme); err != nil {
-// 		log.Error(err, "Error setting controller refernce on secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
-// 		return err
-// 	}
-// 	// Create the secret
-// 	if err := r.client.Create(context.TODO(), newRefSecret); err != nil {
-// 		log.Error(err, "Failed to create secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
-// 		return err
-// 	}
+			log.Info(CheckInURL.Name)
+			newdmsSecret := newDMSSecret(dmsi.Namespace, dmsSecret, CheckInURL.CheckInURL)
 
-// 	return nil
-// }
+			// set the owner reference about the secret for gabage collection
+			if err := controllerutil.SetControllerReference(dmsi, newdmsSecret, r.scheme); err != nil {
+				log.Error(err, "Error setting controller refernce on secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+				return err
+			}
+			// Create the secret
+			if err := r.client.Create(context.TODO(), newdmsSecret); err != nil {
+				log.Error(err, "Failed to create secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+				return err
+			}
 
-// func newRefSecret(namespace string, name string, snitchURL string) *corev1.Secret {
+		}
 
-// 	newRefSecret := &corev1.Secret{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      name,
-// 			Namespace: namespace,
-// 		},
-// 		Data: map[string][]byte{
-// 			config.KeySnitchURL: []byte(snitchURL),
-// 		},
-// 	}
+		ssName := dmsi.Name + config.SyncSetPostfix
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: dmsi.Namespace}, &hivev1.SyncSet{})
 
-// 	return newRefSecret
+		if errors.IsNotFound(err) {
+			log.Info("SyncSet not found, Creating a new SynsSet", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
 
-// }
+			newSS := newSyncSet(dmsi.Namespace, dmsSecret, dmsi.Name)
+			if err := controllerutil.SetControllerReference(dmsi, newSS, r.scheme); err != nil {
+				log.Error(err, "Error setting controller reference on syncset", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+				return err
+			}
+			if err := r.client.Create(context.TODO(), newSS); err != nil {
+				log.Error(err, "Error creating syncset", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+				return err
+			}
+			log.Info("Done creating a new SyncSet", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+
+		} else {
+			log.Info("SyncSet Already Present, nothing to do here...", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+			// return directly if the syscset already existed
+			return nil
+		}
+
+	}
+
+	return nil
+}
+
+func newDMSSecret(namespace string, name string, snitchURL string) *corev1.Secret {
+
+	dmsSecret := &corev1.Secret{
+		Type: "Opaque",
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			config.KeySnitchURL: []byte(snitchURL),
+		},
+	}
+
+	return dmsSecret
+
+}
+
+func newSyncSet(namespace string, dmsSecret string, clusterDeploymentName string) *hivev1.SyncSet {
+
+	newSS := &hivev1.SyncSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dmsSecret,
+			Namespace: namespace,
+		},
+		Spec: hivev1.SyncSetSpec{
+			ClusterDeploymentRefs: []corev1.LocalObjectReference{
+				{
+					Name: clusterDeploymentName,
+				},
+			},
+			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
+				ResourceApplyMode: hivev1.SyncResourceApplyMode,
+				// Use SecretReference here which comsume the secret in the cluster namespace,
+				// instead of embed the secret in the SyncSet directly
+				Secrets: []hivev1.SecretMapping{
+					{
+						SourceRef: hivev1.SecretReference{
+							Name:      dmsSecret,
+							Namespace: namespace,
+						},
+						TargetRef: hivev1.SecretReference{
+							Name:      dmsSecret,
+							Namespace: "openshift-monitoring",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return newSS
+
+}
