@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"strings"
 
+	dms "github.com/openshift/deadmanssnitch-operator/pkg/controller/deadmanssnitchintegration"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

@@ -2,8 +2,6 @@ package deadmanssnitchintegration
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmansnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
@@ -71,16 +69,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// // TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// // Watch for changes to secondary resource Pods and requeue the owner DeadmansSnitchIntegration
-	// err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-	// 	IsController: true,
-	// 	OwnerType:    &deadmansnitchv1alpha1.DeadmansSnitchIntegration{},
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-
 	return nil
 }
 
@@ -107,6 +95,8 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	reqLogger.Info("Reconciling DeadmansSnitchIntegration")
 	// Fetch the DeadmansSnitchIntegration dmsi
 	dmsi := &deadmansnitchv1alpha1.DeadmansSnitchIntegration{}
+	//var DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch-" + dmsi.Name
+
 	err := r.client.Get(context.TODO(), request.NamespacedName, dmsi)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -131,15 +121,18 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
-	// if dmsi.DeletionTimestamp == nil {
-	// 	if utils.HasFinalizer(dmsi, DeadMansSnitchFinalizer) {
-	// 		for _, clustDeploy := range matchingClusterDeployments.Items {
-	// 			// delete dmsi func
-	// 			reqLogger.Info("Hello world test", clustDeploy)
-	// 		}
-	// 	}
+	if dmsi.DeletionTimestamp != nil {
+		// if utils.HasFinalizer(dmsi, DeadMansSnitchFinalizer) {
+		for _, clustDeploy := range matchingClusterDeployments.Items {
+			err = r.deleteDMS(dmsi, &clustDeploy, dmsc)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 
-	// }
+		}
+		return reconcile.Result{}, nil
+	}
+
 	for _, clustDeploy := range matchingClusterDeployments.Items {
 		err = r.dmsAddFinalizer(dmsi, &clustDeploy)
 		if err != nil {
@@ -157,7 +150,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		}
 	}
 
-	return reconcile.Result{}, err
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration) (*hivev1.ClusterDeploymentList, error) {
@@ -180,6 +173,7 @@ func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *
 
 func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, clustDeploy *hivev1.ClusterDeployment) error {
 	var DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch-" + dmsi.Name
+	log.Info("checking for finalizer")
 	if utils.HasFinalizer(clustDeploy, DeadMansSnitchFinalizer) == false {
 		log.Info("Adding finalizer to clusterDeployment:")
 		utils.AddFinalizer(clustDeploy, DeadMansSnitchFinalizer)
@@ -189,13 +183,25 @@ func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmansnitch
 		}
 
 	}
+	log.Info("DMSI Finalizer already exists")
+
+	if utils.HasFinalizer(dmsi, DeadMansSnitchFinalizer) == false {
+		log.Info("Adding finalizer to dmsi:")
+		utils.AddFinalizer(dmsi, DeadMansSnitchFinalizer)
+		err := r.client.Update(context.TODO(), dmsi)
+		if err != nil {
+			return err
+		}
+
+	}
+	log.Info("Cluster deployment Finalizer already exists")
 
 	return nil
 
 }
 
 func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
-
+	log.Info("checking if snitches already exist")
 	snitchName := cd.Spec.ClusterName + "." + cd.Spec.BaseDomain + "-" + dmsi.Spec.SnitchNamePostFix
 	snitches, err := dmsc.FindSnitchesByName(snitchName)
 	if err != nil {
@@ -206,6 +212,7 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmansnitchv1a
 		snitch = snitches[0]
 	} else {
 		newSnitch := dmsclient.NewSnitch(snitchName, dmsi.Spec.Tags, "15_minute", "basic")
+		log.Info("creating snitches")
 		snitch, err = dmsc.Create(newSnitch)
 		if err != nil {
 			return err
@@ -235,22 +242,20 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmansnitchv1a
 
 func (r *ReconcileDeadmansSnitchIntegration) createSecretAndSyncset(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, dmsc dmsclient.Client, cd hivev1.ClusterDeployment) error {
 	dmsSecret := cd.Spec.ClusterName + "-" + dmsi.Spec.SnitchNamePostFix + "-" + "dms-secret"
-	log.Info("SECRET")
-	log.Info(dmsSecret)
+	log.Info("checking if secrets exits")
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{Name: dmsSecret, Namespace: dmsi.Namespace},
 		&corev1.Secret{})
 	if errors.IsNotFound(err) {
+		log.Info("Secret not found Creating dms secret")
 		snitchName := cd.Spec.ClusterName + "." + cd.Spec.BaseDomain + "-" + dmsi.Spec.SnitchNamePostFix
 		ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
-		log.Info(fmt.Sprintf("SNITCHES %v", ReSnitches))
 
 		if err != nil {
 			return err
 		}
 		for _, CheckInURL := range ReSnitches {
 
-			log.Info(CheckInURL.Name)
 			newdmsSecret := newDMSSecret(dmsi.Namespace, dmsSecret, CheckInURL.CheckInURL)
 
 			// set the owner reference about the secret for gabage collection
@@ -349,5 +354,56 @@ func newSyncSet(namespace string, dmsSecret string, clusterDeploymentName string
 	}
 
 	return newSS
+
+}
+
+func (r *ReconcileDeadmansSnitchIntegration) deleteDMS(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration, clustDeploy *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
+
+	var DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch-" + dmsi.Name
+
+	// Delete the dms
+	log.Info("Deleting the DMS from api.deadmanssnitch.com", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+	snitchName := clustDeploy.Spec.ClusterName + "." + clustDeploy.Spec.BaseDomain + "-" + dmsi.Spec.SnitchNamePostFix
+	snitches, err := dmsc.FindSnitchesByName(snitchName)
+	if err != nil {
+		return err
+	}
+	for _, s := range snitches {
+		delStatus, err := dmsc.Delete(s.Token)
+		if !delStatus || err != nil {
+			log.Info("Failed to delete the DMS from api.deadmanssnitch.com", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+			return err
+		}
+		log.Info("Deleted the DMS from api.deadmanssnitch.com", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+	}
+
+	// Delete the SyncSet
+	log.Info("Deleting DMS SyncSet", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+	err = utils.DeleteSyncSet(dmsi.Name+config.SyncSetPostfix, dmsi.Namespace, r.client)
+	if err != nil {
+		log.Error(err, "Error deleting SyncSet", "Namespace", dmsi.Namespace, "Name", dmsi.Name+config.SyncSetPostfix)
+		return err
+	}
+
+	// Delete the referenced secret
+	log.Info("Deleting DMS referenced secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+	err = utils.DeleteRefSecret(dmsi.Name+config.RefSecretPostfix, dmsi.Namespace, r.client)
+	if err != nil {
+		log.Error(err, "Error deleting secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+		return err
+	}
+
+	log.Info("Deleting DMS finalizer from dmsi", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+	if utils.HasFinalizer(dmsi, DeadMansSnitchFinalizer) {
+		utils.DeleteFinalizer(dmsi, DeadMansSnitchFinalizer)
+		err = r.client.Update(context.TODO(), dmsi)
+		if err != nil {
+			log.Error(err, "Error deleting Finalizer from dmsi", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
+			return err
+		}
+
+		return nil
+	}
+	return nil
 
 }
