@@ -1,6 +1,7 @@
 package localmetrics
 
 import (
+	"net/http"
 	neturl "net/url"
 	"testing"
 
@@ -85,5 +86,52 @@ func TestPathParse(t *testing.T) {
 			assert.Equal(t, test.expected, result)
 		})
 	}
+}
 
+func TestSnitchCallRecordParse(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		url       string
+		method    string
+		operation string
+	}{
+		{
+			name:      "describe snitch",
+			url:       "https://dms.test/v1/snitches/test-snitch",
+			method:    http.MethodGet,
+			operation: "describe",
+		},
+		{
+			name:      "list all snitches",
+			url:       "https://dms.test/v1/snitches/",
+			method:    http.MethodGet,
+			operation: "list_all",
+		},
+		{
+			name:      "list all snitches(no slash)",
+			url:       "https://dms.test/v1/snitches",
+			method:    http.MethodGet,
+			operation: "list_all",
+		},
+		{
+			name:      "update snitch",
+			url:       "https://dms.test/v1/snitches/test-snitch",
+			method:    http.MethodPatch,
+			operation: "update",
+		},
+		{
+			name:      "delete snitch",
+			url:       "https://dms.test/v1/snitches/test-snitch",
+			method:    http.MethodDelete,
+			operation: "delete",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			collector := NewMetricsCollector()
+			url, err := neturl.Parse(tc.url)
+			assert.NoError(t, err)
+			operation := collector.parseSnitchCall(url.Path, tc.method)
+			assert.Equal(t, tc.operation, operation)
+		})
+	}
 }

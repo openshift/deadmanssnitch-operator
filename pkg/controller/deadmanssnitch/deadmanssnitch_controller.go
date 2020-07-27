@@ -71,10 +71,9 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 		return nil, err
 	}
 
-	instrumentedClient := dmsclient.NewInstrumentedClient(dmsAPIKey)
-	localmetrics.Collector.AddCollector(instrumentedClient)
+	snitchClient := dmsclient.NewClient(dmsAPIKey, localmetrics.Collector)
 	instrumentedKubeClient := utils.NewClientWithMetricsOrDie(log, mgr, config.OperatorName)
-	return &ReconcileDeadMansSnitch{client: instrumentedKubeClient, scheme: mgr.GetScheme(), dmsclient: instrumentedClient}, nil
+	return &ReconcileDeadMansSnitch{client: instrumentedKubeClient, scheme: mgr.GetScheme(), dmsclient: snitchClient}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -128,7 +127,9 @@ func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcil
 
 	start := time.Now()
 	defer func() {
-		localmetrics.Collector.ObserveReconcile(time.Since(start).Seconds())
+		reconcileDuration := time.Since(start).Seconds()
+		reqLogger.WithValues("Duration", reconcileDuration).Info("Reconcile complete.")
+		localmetrics.Collector.ObserveReconcile(reconcileDuration)
 	}()
 
 	// Fetch the ClusterDeployment instance

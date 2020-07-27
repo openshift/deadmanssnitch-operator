@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -27,18 +28,23 @@ var (
 )
 
 const (
-	operatorName = "deadmanssnitch-operator"
+	operatorName      = "deadmanssnitch-operator"
+	snitchMethodLabel = "method"
 )
 
 type MetricsCollector struct {
-	ReconcileDuration prometheus.Histogram
-	apiCallDuration   *prometheus.HistogramVec
-	collectors        []prometheus.Collector
+	ReconcileDuration  prometheus.Histogram
+	apiCallDuration    *prometheus.HistogramVec
+	snitchCallErrors   prometheus.Counter
+	snitchCallDuration *prometheus.HistogramVec
+	collectors         []prometheus.Collector
 }
 
 func (m MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 	m.ReconcileDuration.Describe(ch)
 	m.apiCallDuration.Describe(ch)
+	m.snitchCallDuration.Describe(ch)
+	m.snitchCallErrors.Describe(ch)
 	for _, c := range m.collectors {
 		c.Describe(ch)
 	}
@@ -47,6 +53,8 @@ func (m MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 func (m MetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	m.ReconcileDuration.Collect(ch)
 	m.apiCallDuration.Collect(ch)
+	m.snitchCallErrors.Collect(ch)
+	m.snitchCallDuration.Collect(ch)
 	for _, c := range m.collectors {
 		c.Collect(ch)
 	}
@@ -68,6 +76,16 @@ func NewMetricsCollector() *MetricsCollector {
 			// This minimizes the number of unused data points we store.
 			Buckets: []float64{1},
 		}, []string{"controller", "method", "resource", "status"}),
+		snitchCallErrors: prometheus.NewCounter(prometheus.CounterOpts{
+			Name:        "dms_operator_snitch_api_call_error",
+			Help:        "Counter of the number of errors in calls to the DMS API",
+			ConstLabels: prometheus.Labels{"name": operatorName},
+		}),
+		snitchCallDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:        "dms_operator_snitch_api_call_duration_seconds",
+			Help:        "Distribution of the timings of API calls to DMS in seconds",
+			ConstLabels: prometheus.Labels{"name": operatorName},
+		}, []string{snitchMethodLabel}),
 	}
 }
 
@@ -93,6 +111,36 @@ func (m *MetricsCollector) ObserveReconcile(seconds float64) {
 // AddCollector adds a collector to existing metrics
 func (m *MetricsCollector) AddCollector(collector prometheus.Collector) {
 	m.collectors = append(m.collectors, collector)
+}
+
+// RecordSnitchCallDuration records the time taken to make a call to the Dead Man Snitch API
+func (m *MetricsCollector) RecordSnitchCallDuration(duration time.Duration, u *url.URL, method string) {
+	operation := m.parseSnitchCall(u.Path, method)
+	m.snitchCallDuration.With(prometheus.Labels{snitchMethodLabel: operation}).Observe(duration.Seconds())
+}
+
+func (m *MetricsCollector) parseSnitchCall(path, method string) string {
+	if method == http.MethodGet {
+		if path == "/v1/snitches" || path == "/v1/snitches/" {
+			return "list_all"
+		} else if strings.HasPrefix(path, "/v1/snitches/") {
+			return "describe"
+		} else {
+			return "check_in"
+		}
+	} else if method == http.MethodPost {
+		return "create"
+	} else if method == http.MethodDelete {
+		return "delete"
+	} else if method == http.MethodPatch {
+		return "update"
+	}
+	return "unknown"
+}
+
+// RecordSnitchCallError increments the error counter while calling the Dead Man Snitch API
+func (m *MetricsCollector) RecordSnitchCallError() {
+	m.snitchCallErrors.Inc()
 }
 
 // resourceFrom normalizes an API request URL, including removing individual namespace and

@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 )
 
 const (
@@ -53,17 +56,19 @@ func defaultURL() *url.URL {
 
 // Client wraps http client
 type dmsClient struct {
-	authToken  string
-	BaseURL    *url.URL
-	httpClient *http.Client
+	authToken        string
+	BaseURL          *url.URL
+	httpClient       *http.Client
+	metricsCollector *localmetrics.MetricsCollector
 }
 
 // NewClient creates an API client
-func NewClient(authToken string) Client {
+func NewClient(authToken string, collector *localmetrics.MetricsCollector) Client {
 	return &dmsClient{
-		authToken:  authToken,
-		BaseURL:    defaultURL(),
-		httpClient: http.DefaultClient,
+		authToken:        authToken,
+		BaseURL:          defaultURL(),
+		httpClient:       http.DefaultClient,
+		metricsCollector: collector,
 	}
 }
 
@@ -103,14 +108,20 @@ func (c *dmsClient) newRequest(method, path string, body interface{}) (*http.Req
 }
 
 func (c *dmsClient) do(req *http.Request) (*http.Response, error) {
+	start := time.Now()
+	defer func() {
+		c.metricsCollector.RecordSnitchCallDuration(time.Since(start), req.URL, req.Method)
+	}()
 	resp, err := c.httpClient.Do(req)
 
 	// raise an error if unable to authenticate to DMS service
 	if resp.StatusCode == 401 {
 		err = fmt.Errorf("unauthorized error: please check the deadmanssnitch credentials")
+		c.metricsCollector.RecordSnitchCallError()
 	}
 
 	if err != nil {
+		c.metricsCollector.RecordSnitchCallError()
 		return resp, fmt.Errorf("Error calling the API endpoint: %v", err)
 	}
 
