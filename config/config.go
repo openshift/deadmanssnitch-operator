@@ -26,4 +26,6 @@ const (
 	ClusterDeploymentManagedLabel string = "api.openshift.com/managed"
 	// ClusterDeploymentNoalertsLabel is the label the clusterdeployment will have if the cluster should not send alerts
 	ClusterDeploymentNoalertsLabel string = "api.openshift.com/noalerts"
+
+	
 )

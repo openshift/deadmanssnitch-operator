@@ -3,7 +3,7 @@ kind: DeadmansSnitchIntegration
 metadata:
   name: example-deadmanssnitchintegration
 spec:
-  snitchNamePostFix: test
+  snitchNamePostFix: example
   dmsAPIKeySecretRef:
     name: deadmanssnitch-api-key
     namespace: deadmanssnitch-operator

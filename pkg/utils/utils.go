@@ -14,7 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+		logf "sigs.k8s.io/controller-runtime/pkg/log"
+
 )
+
+var log = logf.Log.WithName("")
 
 // HasFinalizer returns true if the given object has the given finalizer
 func HasFinalizer(object metav1.Object, finalizer string) bool {
@@ -94,7 +98,7 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 }
 
 // DeleteSyncSet deletes a SyncSet
-func DeleteSyncSet(name string, namespace string, client client.Client, reqLogger logr.Logger) error {
+func DeleteSyncSet(name string, namespace string, client client.Client) error {
 	syncset := &hivev1.SyncSet{}
 	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, syncset)
 
@@ -111,7 +115,7 @@ func DeleteSyncSet(name string, namespace string, client client.Client, reqLogge
 
 	// Only delete the syncset, this is just cleanup of the synced secret.
 	// The ClusterDeployment controller manages deletion of the pagerduty serivce.
-	reqLogger.Info("Deleting SyncSet", "Namespace", namespace, "Name", name)
+	log.Info("Deleting SyncSet", "Namespace", namespace, "Name", name)
 	err = client.Delete(context.TODO(), syncset)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -128,7 +132,7 @@ func DeleteSyncSet(name string, namespace string, client client.Client, reqLogge
 }
 
 // DeleteRefSecret deletes Secret which referenced by SyncSet
-func DeleteRefSecret(name string, namespace string, client client.Client, reqLogger logr.Logger) error {
+func DeleteRefSecret(name string, namespace string, client client.Client, ) error {
 	secret := &corev1.Secret{}
 	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, secret)
 
@@ -144,7 +148,7 @@ func DeleteRefSecret(name string, namespace string, client client.Client, reqLog
 	}
 
 	// Delete the secret
-	reqLogger.Info("Deleting Referenced Secret", "Namespace", namespace, "Name", name)
+	log.Info("Deleting Referenced Secret", "Namespace", namespace, "Name", name)
 	err = client.Delete(context.TODO(), secret)
 	if err != nil {
 		if errors.IsNotFound(err) {
