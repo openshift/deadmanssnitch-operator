@@ -2,10 +2,12 @@ package deadmanssnitch
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/deadmanssnitch-operator/config"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 
@@ -69,11 +71,10 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 		return nil, err
 	}
 
-	return &ReconcileDeadMansSnitch{
-		//client:    mgr.GetClient(),
-		client:    mgr.GetClient(),
-		scheme:    mgr.GetScheme(),
-		dmsclient: dmsclient.NewClient(dmsAPIKey)}, nil
+	instrumentedClient := dmsclient.NewInstrumentedClient(dmsAPIKey)
+	localmetrics.Collector.AddCollector(instrumentedClient)
+	instrumentedKubeClient := utils.NewClientWithMetricsOrDie(log, mgr, config.OperatorName)
+	return &ReconcileDeadMansSnitch{client: instrumentedKubeClient, scheme: mgr.GetScheme(), dmsclient: instrumentedClient}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -124,6 +125,11 @@ type ReconcileDeadMansSnitch struct {
 func (r *ReconcileDeadMansSnitch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling DeadMansSnitch")
+
+	start := time.Now()
+	defer func() {
+		localmetrics.Collector.ObserveReconcile(time.Since(start).Seconds())
+	}()
 
 	// Fetch the ClusterDeployment instance
 	processCD, instance, err := utils.CheckClusterDeployment(request, r.client, reqLogger)

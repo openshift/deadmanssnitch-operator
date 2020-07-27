@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/config"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	mockdms "github.com/openshift/deadmanssnitch-operator/pkg/dmsclient/mock"
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 
 	hiveapis "github.com/openshift/hive/pkg/apis"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
@@ -312,6 +313,8 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			// This is necessary for the mocks to report failures like methods not being called an expected number of times.
 			// after mocks is defined
 			defer mocks.mockCtrl.Finish()
+
+			localmetrics.Collector = localmetrics.NewMetricsCollector()
 
 			rdms := &ReconcileDeadMansSnitch{
 				client:    mocks.fakeKubeClient,

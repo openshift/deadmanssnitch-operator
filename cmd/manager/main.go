@@ -117,14 +117,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-
+	localmetrics.Collector = localmetrics.NewMetricsCollector()
 	metricsServer := metrics.NewBuilder().WithPort(metricsPort).WithPath(metricsPath).
-		WithCollectors(localmetrics.MetricsList).
+		WithCollector(localmetrics.Collector).
 		WithRoute().
 		WithServiceName(operatorconfig.OperatorName).
 		GetConfig()
@@ -132,6 +127,12 @@ func main() {
 	// Configure metrics if it errors log the error but continue
 	if err := metrics.ConfigureMetrics(context.TODO(), *metricsServer); err != nil {
 		log.Error(err, "Failed to configure Metrics")
+		os.Exit(1)
+	}
+
+	// Setup all Controllers
+	if err := controller.AddToManager(mgr); err != nil {
+		log.Error(err, "")
 		os.Exit(1)
 	}
 
