@@ -10,7 +10,7 @@ spec:
     - alert: DeadMansSnitchAPIUnavailable
       annotations:
         message: "Unable to communicate with Dead Man's Snitch"
-      expr: metricDeadMansSnitchHeartbeat = 0
+      expr: metricDeadMansSnitchHeartbeat == 0
       for: 15m
       labels:
         severity: critical
