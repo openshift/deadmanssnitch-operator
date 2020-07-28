@@ -287,6 +287,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		{
 			name: "Test Deleting",
 			localObjects: []runtime.Object{
+				testSecret(),
 				deletedClusterDeployment(),
 				testDeadMansSnitchIntegration(),
 			},
@@ -304,6 +305,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		{
 			name: "Test ClusterDeployment Spec.Installed == false",
 			localObjects: []runtime.Object{
+				testSecret(),
 				uninstalledClusterDeployment(),
 				testDeadMansSnitchIntegration(),
 			},
@@ -316,6 +318,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		{
 			name: "Test Non managed ClusterDeployment",
 			localObjects: []runtime.Object{
+				testSecret(),
 				nonManagedClusterDeployment(),
 				testDeadMansSnitchIntegration(),
 			},
@@ -329,6 +332,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		{
 			name: "Test Create Managed ClusterDeployment with Alerts disabled",
 			localObjects: []runtime.Object{
+				testSecret(),
 				noalertsManagedClusterDeployment(),
 				testDeadMansSnitchIntegration(),
 			},
@@ -358,7 +362,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			rdms := &ReconcileDeadmansSnitchIntegration{
 				client:    mocks.fakeKubeClient,
 				scheme:    scheme.Scheme,
-				dmsclient: mocks.mockDMSClient,
+				dmsclient: func(apiKey string) dmsclient.Client { return mocks.mockDMSClient },
 			}
 
 			// ACT
@@ -409,7 +413,7 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 		rdms := &ReconcileDeadmansSnitchIntegration{
 			client:    mocks.fakeKubeClient,
 			scheme:    scheme.Scheme,
-			dmsclient: mocks.mockDMSClient,
+			dmsclient: func(apiKey string) dmsclient.Client { return mocks.mockDMSClient },
 		}
 
 		// ACT (create)

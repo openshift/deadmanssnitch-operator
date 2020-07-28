@@ -49,36 +49,17 @@ var log = logf.Log.WithName("controller_deadmanssnitchintegration")
 // Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	newRec, err := newReconciler(mgr)
-	if err != nil {
-		return err
-	}
-
-	return add(mgr, newRec)
+	return add(mgr, newReconciler(mgr))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
-
-	// Regular manager client is not fully initialized here, create our own for some
-	// initialization API communication:
-	tempClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
-	if err != nil {
-		return nil, err
-	}
-
-	// get dms key
-	dmsAPIKey, err := utils.LoadSecretData(tempClient, DeadMansSnitchAPISecretName,
-		DeadMansSnitchOperatorNamespace, DeadMansSnitchAPISecretKey)
-	if err != nil {
-		return nil, err
-	}
-
+func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileDeadmansSnitchIntegration{
 		//client:    mgr.GetClient(),
 		client:    mgr.GetClient(),
 		scheme:    mgr.GetScheme(),
-		dmsclient: dmsclient.NewClient(dmsAPIKey)}, nil
+		dmsclient: dmsclient.NewClient,
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -146,7 +127,7 @@ type ReconcileDeadmansSnitchIntegration struct {
 	// that reads objects from the cache and writes to the apiserver
 	client    client.Client
 	scheme    *runtime.Scheme
-	dmsclient dmsclient.Client
+	dmsclient func(apiKey string) dmsclient.Client
 }
 
 // Reconcile reads that state of the cluster for a DeadmansSnitchIntegration object and makes changes based on the state read
@@ -174,12 +155,12 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
-	// dmsAPIKey, err := utils.LoadSecretData(r.client, dmsi.Spec.DmsAPIKeySecretRef.Name,
-	// 	dmsi.Spec.DmsAPIKeySecretRef.Namespace, DeadMansSnitchAPISecretKey)
-	// if err != nil {
-	// 	return reconcile.Result{}, err
-	// }
-	// dmsc := dmsclient.NewClient(dmsAPIKey)
+	dmsAPIKey, err := utils.LoadSecretData(r.client, dmsi.Spec.DmsAPIKeySecretRef.Name,
+		dmsi.Spec.DmsAPIKeySecretRef.Namespace, DeadMansSnitchAPISecretKey)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	dmsc := r.dmsclient(dmsAPIKey)
 
 	matchingClusterDeployments, err := r.getMatchingClusterDeployment(dmsi)
 	if err != nil {
@@ -188,7 +169,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 
 	if dmsi.DeletionTimestamp != nil {
 		for _, clustDeploy := range matchingClusterDeployments.Items {
-			err = r.deleteDMSI(dmsi, &clustDeploy, r.dmsclient)
+			err = r.deleteDMSI(dmsi, &clustDeploy, dmsc)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -199,7 +180,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 
 	for _, clustDeploy := range matchingClusterDeployments.Items {
 		if clustDeploy.DeletionTimestamp != nil || clustDeploy.Labels[config.ClusterDeploymentNoalertsLabel] == "true" {
-			err = r.deleteDMSClusterDeploy(dmsi, &clustDeploy, r.dmsclient)
+			err = r.deleteDMSClusterDeploy(dmsi, &clustDeploy, dmsc)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -217,12 +198,12 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 			return reconcile.Result{}, err
 		}
 
-		err = r.createSnitch(dmsi, &clustDeploy, r.dmsclient)
+		err = r.createSnitch(dmsi, &clustDeploy, dmsc)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
-		err = r.createSecret(dmsi, r.dmsclient, clustDeploy)
+		err = r.createSecret(dmsi, dmsc, clustDeploy)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
