@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 )
 
 const (
@@ -53,17 +56,19 @@ func defaultURL() *url.URL {
 
 // Client wraps http client
 type dmsClient struct {
-	authToken  string
-	BaseURL    *url.URL
-	httpClient *http.Client
+	authToken        string
+	BaseURL          *url.URL
+	httpClient       *http.Client
+	metricsCollector *localmetrics.MetricsCollector
 }
 
 // NewClient creates an API client
-func NewClient(authToken string) Client {
+func NewClient(authToken string, collector *localmetrics.MetricsCollector) Client {
 	return &dmsClient{
-		authToken:  authToken,
-		BaseURL:    defaultURL(),
-		httpClient: http.DefaultClient,
+		authToken:        authToken,
+		BaseURL:          defaultURL(),
+		httpClient:       http.DefaultClient,
+		metricsCollector: collector,
 	}
 }
 
@@ -102,7 +107,11 @@ func (c *dmsClient) newRequest(method, path string, body interface{}) (*http.Req
 	return req, nil
 }
 
-func (c *dmsClient) do(req *http.Request) (*http.Response, error) {
+func (c *dmsClient) do(req *http.Request, operation string) (*http.Response, error) {
+	start := time.Now()
+	defer func() {
+		c.metricsCollector.RecordSnitchCallDuration(time.Since(start), operation)
+	}()
 	resp, err := c.httpClient.Do(req)
 
 	// raise an error if unable to authenticate to DMS service
@@ -111,6 +120,7 @@ func (c *dmsClient) do(req *http.Request) (*http.Response, error) {
 	}
 
 	if err != nil {
+		c.metricsCollector.RecordSnitchCallError()
 		return resp, fmt.Errorf("Error calling the API endpoint: %v", err)
 	}
 
@@ -124,7 +134,7 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 		return nil, err
 	}
 
-	resp, err := c.do(req)
+	resp, err := c.do(req, "list_all")
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +157,7 @@ func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 		return snitch, err
 	}
 
-	resp, err := c.do(req)
+	resp, err := c.do(req, "describe")
 	if err != nil {
 		return snitch, err
 	}
@@ -167,7 +177,7 @@ func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 	if err != nil {
 		return snitch, err
 	}
-	resp, err := c.do(req)
+	resp, err := c.do(req, "create")
 	if err != nil {
 		return snitch, err
 	}
@@ -187,7 +197,7 @@ func (c *dmsClient) Delete(snitchToken string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	resp, err := c.do(req)
+	resp, err := c.do(req, "delete")
 	if err != nil {
 		return false, err
 	}
@@ -224,7 +234,7 @@ func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 	if err != nil {
 		return snitch, err
 	}
-	resp, err := c.do(req)
+	resp, err := c.do(req, "update")
 	if err != nil {
 		return snitch, err
 	}
@@ -245,7 +255,7 @@ func (c *dmsClient) CheckIn(s Snitch) error {
 
 	req.Header.Set("User-Agent", "golang httpClient")
 
-	_, err = c.do(req)
+	_, err = c.do(req, "check_in")
 	if err != nil {
 		return err
 	}
