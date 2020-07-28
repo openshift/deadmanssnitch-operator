@@ -103,6 +103,7 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 		},
 		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
+			BaseDomain:  "base.domain",
 		},
 	}
 	cd.Spec.Installed = true
@@ -139,7 +140,7 @@ func testDeadMansSnitchIntegration() *deadmansnitchv1alpha1.DeadmansSnitchIntegr
 func testSyncSet() *hivev1.SyncSet {
 	return &hivev1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + config.SyncSetPostfix,
+			Name:      testClusterName + "-" + snitchNamePostFix + "-dms-secret",
 			Namespace: testNamespace,
 		},
 		Spec: hivev1.SyncSetSpec{
@@ -156,7 +157,7 @@ func testSyncSet() *hivev1.SyncSet {
 func testReferencedSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + config.RefSecretPostfix,
+			Name:      testClusterName + "-" + snitchNamePostFix + "-dms-secret",
 			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
@@ -265,7 +266,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				clusterDeploymentRefName: testClusterName,
 			},
 			expectedSecret: &SecretEntry{
-				name:                      testClusterName + "-" + snitchNamePostFix + "-" + "dms-secret",
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + "dms-secret",
 				snitchURL:                testSnitchURL,
 				clusterDeploymentRefName: testClusterName,
 			},
@@ -279,7 +280,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 						CheckInURL: testSnitchURL,
 						Status:     "pending",
 					},
-				}, nil).Times(1)
+				}, nil).Times(2)
 				r.CheckIn(gomock.Any()).Return(nil).Times(1)
 			},
 		},
@@ -310,8 +311,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
 			verifySecret:     verifyNoSecret,
-			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
-			},
+			setupDMSMock:     func(r *mockdms.MockClientMockRecorder) {},
 		},
 		{
 			name: "Test Non managed ClusterDeployment",
@@ -337,6 +337,10 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			verifySyncSets:   verifyNoSyncSet,
 			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Delete(gomock.Any()).Return(true, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{Token: testSnitchToken},
+				}, nil).Times(1)
 			},
 		},
 	}
@@ -352,8 +356,8 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			defer mocks.mockCtrl.Finish()
 
 			rdms := &ReconcileDeadmansSnitchIntegration{
-				client: mocks.fakeKubeClient,
-				scheme: scheme.Scheme,
+				client:    mocks.fakeKubeClient,
+				scheme:    scheme.Scheme,
 				dmsclient: mocks.mockDMSClient,
 			}
 
@@ -390,10 +394,10 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 		//test.setupDMSMock(mocks.mockDMSClient.EXPECT())
 		setupDMSMock :=
 			func(r *mockdms.MockClientMockRecorder) {
-				r.Delete(gomock.Any()).Return(true, nil).Times(1)
+				r.Delete(gomock.Any()).Return(true, nil).Times(4)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
 					{Token: testSnitchToken},
-				}, nil).Times(1)
+				}, nil).Times(6)
 			}
 
 		setupDMSMock(mocks.mockDMSClient.EXPECT())
@@ -403,8 +407,8 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 		defer mocks.mockCtrl.Finish()
 
 		rdms := &ReconcileDeadmansSnitchIntegration{
-			client: mocks.fakeKubeClient,
-			scheme: scheme.Scheme,
+			client:    mocks.fakeKubeClient,
+			scheme:    scheme.Scheme,
 			dmsclient: mocks.mockDMSClient,
 		}
 
@@ -459,12 +463,12 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 
 func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	ssl := hivev1.SyncSetList{}
-	err:= c.List(context.TODO(),&ssl)
-	if err != nil{
+	err := c.List(context.TODO(), &ssl)
+	if err != nil {
 		return false
 	}
-	for _, s := range ssl.Items{
-		fmt.Printf("syncset %v \n",s)
+	for _, s := range ssl.Items {
+		fmt.Printf("syncset %v \n", s)
 	}
 
 	ss := hivev1.SyncSet{}
@@ -493,9 +497,18 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 }
 
 func verifySecretExists(c client.Client, expected *SecretEntry) bool {
+	sl := corev1.SecretList{}
+	err := c.List(context.TODO(), &sl)
+	if err != nil {
+		return false
+	}
+	for _, s := range sl.Items {
+		fmt.Printf("secret %v \n", s)
+	}
+
 	secret := corev1.Secret{}
 
-	err := c.Get(context.TODO(),
+	err = c.Get(context.TODO(),
 		types.NamespacedName{Name: expected.name, Namespace: testNamespace},
 		&secret)
 

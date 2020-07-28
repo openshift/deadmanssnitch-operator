@@ -81,7 +81,6 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 		dmsclient: dmsclient.NewClient(dmsAPIKey)}, nil
 }
 
-
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
@@ -145,10 +144,9 @@ var _ reconcile.Reconciler = &ReconcileDeadmansSnitchIntegration{}
 type ReconcileDeadmansSnitchIntegration struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client    client.Client
+	scheme    *runtime.Scheme
 	dmsclient dmsclient.Client
-
 }
 
 // Reconcile reads that state of the cluster for a DeadmansSnitchIntegration object and makes changes based on the state read
@@ -200,7 +198,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	}
 
 	for _, clustDeploy := range matchingClusterDeployments.Items {
-		if clustDeploy.DeletionTimestamp != nil {
+		if clustDeploy.DeletionTimestamp != nil || clustDeploy.Labels[config.ClusterDeploymentNoalertsLabel] == "true" {
 			err = r.deleteDMSClusterDeploy(dmsi, &clustDeploy, r.dmsclient)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -208,6 +206,12 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 			return reconcile.Result{}, nil
 
 		}
+
+		if !clustDeploy.Spec.Installed {
+			// Cluster isn't installed yet, return
+			return reconcile.Result{}, nil
+		}
+
 		err = r.dmsAddFinalizer(dmsi, &clustDeploy)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -233,17 +237,11 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 }
 
 func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *deadmansnitchv1alpha1.DeadmansSnitchIntegration) (*hivev1.ClusterDeploymentList, error) {
-
-	labelSelector := dmsi.Spec.ClusterDeploymentSelector.DeepCopy()
-	labelSelector.MatchExpressions = append(labelSelector.MatchExpressions, metav1.LabelSelectorRequirement{
-		Key:      config.ClusterDeploymentNoalertsLabel,
-		Operator: metav1.LabelSelectorOpNotIn,
-		Values:   []string{"true"},
-	})
-	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	selector, err := metav1.LabelSelectorAsSelector(&dmsi.Spec.ClusterDeploymentSelector)
 	if err != nil {
 		return nil, err
 	}
+
 	matchingClusterDeployments := &hivev1.ClusterDeploymentList{}
 	listOpts := &client.ListOptions{LabelSelector: selector}
 	err = r.client.List(context.TODO(), matchingClusterDeployments, listOpts)
@@ -513,7 +511,7 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeploy(dmsi *deadma
 
 	// Delete the SyncSet
 	log.Info("Deleting DMS SyncSet", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
-	err = utils.DeleteSyncSet(dmsi.Name+config.SyncSetPostfix, dmsi.Namespace, r.client)
+	err = utils.DeleteSyncSet(clustDeploy.Name+"-"+dmsi.Spec.SnitchNamePostFix+config.RefSecretPostfix, clustDeploy.Namespace, r.client)
 	if err != nil {
 		log.Error(err, "Error deleting SyncSet", "Namespace", dmsi.Namespace, "Name", dmsi.Name+config.SyncSetPostfix)
 		return err
@@ -521,7 +519,7 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeploy(dmsi *deadma
 
 	// Delete the referenced secret
 	log.Info("Deleting DMS referenced secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
-	err = utils.DeleteRefSecret(dmsi.Name+config.RefSecretPostfix, dmsi.Namespace, r.client)
+	err = utils.DeleteRefSecret(clustDeploy.Name+"-"+dmsi.Spec.SnitchNamePostFix+config.RefSecretPostfix, clustDeploy.Namespace, r.client)
 	if err != nil {
 		log.Error(err, "Error deleting secret", "Namespace", dmsi.Namespace, "Name", dmsi.Name)
 		return err
