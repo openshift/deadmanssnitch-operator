@@ -67,7 +67,7 @@ func NewMetricsCollector() *MetricsCollector {
 			Help:        "The duration it takes to reconcile a ClusterDeployment",
 			ConstLabels: map[string]string{"name": operatorName},
 		}),
-		// apiCallDuration times API requests. Histogram also gives us a _count metric for free.
+		// apiCallDuration times API requests. Histogram also gives us a _count metric for free but also includes errors.
 		apiCallDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:        "dms_operator_api_request_duration_seconds",
 			Help:        "Distribution of the number of seconds an API request takes",
@@ -114,28 +114,8 @@ func (m *MetricsCollector) AddCollector(collector prometheus.Collector) {
 }
 
 // RecordSnitchCallDuration records the time taken to make a call to the Dead Man Snitch API
-func (m *MetricsCollector) RecordSnitchCallDuration(duration time.Duration, u *url.URL, method string) {
-	operation := m.parseSnitchCall(u.Path, method)
+func (m *MetricsCollector) RecordSnitchCallDuration(duration time.Duration, operation string) {
 	m.snitchCallDuration.With(prometheus.Labels{snitchMethodLabel: operation}).Observe(duration.Seconds())
-}
-
-func (m *MetricsCollector) parseSnitchCall(path, method string) string {
-	if method == http.MethodGet {
-		if path == "/v1/snitches" || path == "/v1/snitches/" {
-			return "list_all"
-		} else if strings.HasPrefix(path, "/v1/snitches/") {
-			return "describe"
-		} else {
-			return "check_in"
-		}
-	} else if method == http.MethodPost {
-		return "create"
-	} else if method == http.MethodDelete {
-		return "delete"
-	} else if method == http.MethodPatch {
-		return "update"
-	}
-	return "unknown"
 }
 
 // RecordSnitchCallError increments the error counter while calling the Dead Man Snitch API

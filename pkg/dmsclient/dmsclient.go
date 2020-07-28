@@ -107,17 +107,16 @@ func (c *dmsClient) newRequest(method, path string, body interface{}) (*http.Req
 	return req, nil
 }
 
-func (c *dmsClient) do(req *http.Request) (*http.Response, error) {
+func (c *dmsClient) do(req *http.Request, operation string) (*http.Response, error) {
 	start := time.Now()
 	defer func() {
-		c.metricsCollector.RecordSnitchCallDuration(time.Since(start), req.URL, req.Method)
+		c.metricsCollector.RecordSnitchCallDuration(time.Since(start), operation)
 	}()
 	resp, err := c.httpClient.Do(req)
 
 	// raise an error if unable to authenticate to DMS service
 	if resp.StatusCode == 401 {
 		err = fmt.Errorf("unauthorized error: please check the deadmanssnitch credentials")
-		c.metricsCollector.RecordSnitchCallError()
 	}
 
 	if err != nil {
@@ -135,7 +134,7 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 		return nil, err
 	}
 
-	resp, err := c.do(req)
+	resp, err := c.do(req, "list_all")
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +157,7 @@ func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 		return snitch, err
 	}
 
-	resp, err := c.do(req)
+	resp, err := c.do(req, "describe")
 	if err != nil {
 		return snitch, err
 	}
@@ -178,7 +177,7 @@ func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 	if err != nil {
 		return snitch, err
 	}
-	resp, err := c.do(req)
+	resp, err := c.do(req, "create")
 	if err != nil {
 		return snitch, err
 	}
@@ -198,7 +197,7 @@ func (c *dmsClient) Delete(snitchToken string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	resp, err := c.do(req)
+	resp, err := c.do(req, "delete")
 	if err != nil {
 		return false, err
 	}
@@ -235,7 +234,7 @@ func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 	if err != nil {
 		return snitch, err
 	}
-	resp, err := c.do(req)
+	resp, err := c.do(req, "update")
 	if err != nil {
 		return snitch, err
 	}
@@ -256,7 +255,7 @@ func (c *dmsClient) CheckIn(s Snitch) error {
 
 	req.Header.Set("User-Agent", "golang httpClient")
 
-	_, err = c.do(req)
+	_, err = c.do(req, "check_in")
 	if err != nil {
 		return err
 	}
