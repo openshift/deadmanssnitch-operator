@@ -40,3 +40,10 @@ spec:
       deployments:
       - name: deadmanssnitch-operator
         # Deployment spec will be added here by the generate-operator-bundle.py script.
+  customresourcedefinitions:
+    owned:
+    - description: DeadmansSnitchIntegration
+      displayName: DeadmansSnitchIntegration
+      kind: DeadmansSnitchIntegration
+      name: deadmanssnitchintegrations.deadmansnitch.openshift.io
+      version: v1alpha1
