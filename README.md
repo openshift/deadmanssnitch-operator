@@ -13,7 +13,7 @@ Operator to manage deadmanssnitch configs for Openshift Dedicated
 The operator runs on hive. It has a single controller. It:
 - Requires a master Secret to talk to the Dead Man's Snitch API.
   This secret is expected to be named `deadmanssnitch-api-key` and live in the `deadmanssnitch-operator` namespace.
-- Pays attention to ClusterDeployments that are:
+- Pays attention to [ClusterDeployments](https://github.com/openshift/hive/blob/master/config/crds/hive.openshift.io_clusterdeployments.yaml) that are:
   - Installed (`spec.installed=true`)
   - Managed (label `api.openshift.com/managed="true"`)
   - Not silenced (label `api.openshift.com/noalerts!="true"`)
