@@ -110,7 +110,7 @@ func (c *dmsClient) newRequest(method, path string, body interface{}) (*http.Req
 func (c *dmsClient) do(req *http.Request, operation string) (*http.Response, error) {
 	start := time.Now()
 	defer func() {
-		c.metricsCollector.RecordSnitchCallDuration(time.Since(start), operation)
+		c.metricsCollector.ObserveSnitchCallDuration(time.Since(start).Seconds(), operation)
 	}()
 	resp, err := c.httpClient.Do(req)
 
@@ -120,7 +120,7 @@ func (c *dmsClient) do(req *http.Request, operation string) (*http.Response, err
 	}
 
 	if err != nil {
-		c.metricsCollector.RecordSnitchCallError()
+		c.metricsCollector.ObserveSnitchCallError()
 		return resp, fmt.Errorf("Error calling the API endpoint: %v", err)
 	}
 

@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -37,7 +36,6 @@ type MetricsCollector struct {
 	apiCallDuration    *prometheus.HistogramVec
 	snitchCallErrors   prometheus.Counter
 	snitchCallDuration *prometheus.HistogramVec
-	collectors         []prometheus.Collector
 }
 
 func (m MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -45,9 +43,6 @@ func (m MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 	m.apiCallDuration.Describe(ch)
 	m.snitchCallDuration.Describe(ch)
 	m.snitchCallErrors.Describe(ch)
-	for _, c := range m.collectors {
-		c.Describe(ch)
-	}
 }
 
 func (m MetricsCollector) Collect(ch chan<- prometheus.Metric) {
@@ -55,9 +50,6 @@ func (m MetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	m.apiCallDuration.Collect(ch)
 	m.snitchCallErrors.Collect(ch)
 	m.snitchCallDuration.Collect(ch)
-	for _, c := range m.collectors {
-		c.Collect(ch)
-	}
 }
 
 func NewMetricsCollector() *MetricsCollector {
@@ -67,7 +59,7 @@ func NewMetricsCollector() *MetricsCollector {
 			Help:        "The duration it takes to reconcile a ClusterDeployment",
 			ConstLabels: map[string]string{"name": operatorName},
 		}),
-		// apiCallDuration times API requests. Histogram also gives us a _count metric for free but also includes errors.
+		// apiCallDuration times API requests. Histogram also gives us a _count metric for free.
 		apiCallDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:        "dms_operator_api_request_duration_seconds",
 			Help:        "Distribution of the number of seconds an API request takes",
@@ -81,6 +73,8 @@ func NewMetricsCollector() *MetricsCollector {
 			Help:        "Counter of the number of errors in calls to the DMS API",
 			ConstLabels: prometheus.Labels{"name": operatorName},
 		}),
+		// NOTE: Unlike apiCallDuration, this metric also includes errors. So don't add
+		// snitchCallErrors or you'll be counting them twice.
 		snitchCallDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:        "dms_operator_snitch_api_call_duration_seconds",
 			Help:        "Distribution of the timings of API calls to DMS in seconds",
@@ -89,12 +83,12 @@ func NewMetricsCollector() *MetricsCollector {
 	}
 }
 
-// AddAPICall observes metrics for a call to an external API
+// ObserveAPICall observes metrics for a call to an external API
 // - param controller: The name of the controller making the API call
 // - param req: The HTTP Request structure
 // - param resp: The HTTP Response structure
 // - param duration: The number of seconds the call took.
-func (m *MetricsCollector) AddAPICall(controller string, req *http.Request, resp *http.Response, duration float64) {
+func (m *MetricsCollector) ObserveAPICall(controller string, req *http.Request, resp *http.Response, duration float64) {
 	m.apiCallDuration.With(prometheus.Labels{
 		"controller": controller,
 		"method":     req.Method,
@@ -104,22 +98,17 @@ func (m *MetricsCollector) AddAPICall(controller string, req *http.Request, resp
 }
 
 // ObserveReconcile records the duration of the reconcile loop of the operator
-func (m *MetricsCollector) ObserveReconcile(seconds float64) {
-	m.ReconcileDuration.Observe(seconds)
+func (m *MetricsCollector) ObserveReconcile(duration float64) {
+	m.ReconcileDuration.Observe(duration)
 }
 
-// AddCollector adds a collector to existing metrics
-func (m *MetricsCollector) AddCollector(collector prometheus.Collector) {
-	m.collectors = append(m.collectors, collector)
+// ObserveSnitchCallDuration records the time taken to make a call to the Dead Man Snitch API
+func (m *MetricsCollector) ObserveSnitchCallDuration(duration float64, operation string) {
+	m.snitchCallDuration.With(prometheus.Labels{snitchMethodLabel: operation}).Observe(duration)
 }
 
-// RecordSnitchCallDuration records the time taken to make a call to the Dead Man Snitch API
-func (m *MetricsCollector) RecordSnitchCallDuration(duration time.Duration, operation string) {
-	m.snitchCallDuration.With(prometheus.Labels{snitchMethodLabel: operation}).Observe(duration.Seconds())
-}
-
-// RecordSnitchCallError increments the error counter while calling the Dead Man Snitch API
-func (m *MetricsCollector) RecordSnitchCallError() {
+// ObserveSnitchCallError increments the error counter while calling the Dead Man Snitch API
+func (m *MetricsCollector) ObserveSnitchCallError() {
 	m.snitchCallErrors.Inc()
 }
 
