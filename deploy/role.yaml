@@ -63,14 +63,9 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - deadmansnitch.openshift.io
+  - deadmanssnitch.managed.openshift.io
   resources:
   - '*'
+  - deadmanssnitchintegrations
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - '*'

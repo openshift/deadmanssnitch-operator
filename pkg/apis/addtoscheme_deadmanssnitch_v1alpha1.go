@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
+	"github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
 )
 
 func init() {

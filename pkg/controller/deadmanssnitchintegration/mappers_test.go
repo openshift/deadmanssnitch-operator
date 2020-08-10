@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	deadmanssnitchapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
-	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
+	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
 	hiveapis "github.com/openshift/hive/pkg/apis"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestClusterDeploymentToDeadMansSnitchIntegrationsMapper(t *testing.T) {
 			expectedRequests: []reconcile.Request{},
 		},
 		{
-			name:   "clusterDeploymentToDeadMansSnitchIntegrations: two matching Deadmansnitchintegrations, one not matching",
+			name:   "clusterDeploymentToDeadMansSnitchIntegrations: two matching deadmanssnitchintegrations, one not matching",
 			mapper: clusterDeploymentToDeadMansSnitchIntegrations,
 			objects: []runtime.Object{
 				deadMansSnitchIntegration("test1", map[string]string{"test": "test"}),

@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	dmsapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
-	deadmansnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
+	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -111,14 +111,14 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 
 	return &cd
 }
-func testDeadMansSnitchIntegration() *deadmansnitchv1alpha1.DeadmansSnitchIntegration {
+func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
 
-	return &deadmansnitchv1alpha1.DeadmansSnitchIntegration{
+	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testDeadMansSnitchintegrationName,
 			Namespace: config.OperatorNamespace,
 		},
-		Spec: deadmansnitchv1alpha1.DeadmansSnitchIntegrationSpec{
+		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
 			DmsAPIKeySecretRef: corev1.SecretReference{
 				Name:      DeadMansSnitchAPISecretKey,
 				Namespace: config.OperatorNamespace,

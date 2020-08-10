@@ -1,4 +1,4 @@
-apiVersion: deadmansnitch.openshift.io/v1alpha1
+apiVersion: deadmanssnitch.managed.openshift.io/v1alpha1
 kind: DeadmansSnitchIntegration
 metadata:
   name: test-deadmanssnitchintegration

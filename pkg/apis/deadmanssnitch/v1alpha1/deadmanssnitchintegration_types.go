@@ -10,14 +10,19 @@ import (
 
 // DeadmansSnitchIntegrationSpec defines the desired state of DeadmansSnitchIntegration
 type DeadmansSnitchIntegrationSpec struct {
+	//reference to the secret containing deadmanssnitch-api-key
 	DmsAPIKeySecretRef corev1.SecretReference `json:"dmsAPIKeySecretRef"`
 
+	//a label selector used to find which clusterdeployment CRs receive a DMS integration based on this configuration
 	ClusterDeploymentSelector metav1.LabelSelector `json:"clusterdeploymentSelector"`
 
+	//name and namespace in the target cluster where the secret is synced
 	TargetSecretRef corev1.SecretReference `json:"targetSecretRef"`
 
+	//Array of strings that are applied to the service created in DMS
 	Tags []string `json:"tags"`
 
+	//The postfix to append to any snitches managed by this integration.  I.e. "osd" or "rhmi"
 	SnitchNamePostFix string `json:"snitchNamePostFix"`
 }
 

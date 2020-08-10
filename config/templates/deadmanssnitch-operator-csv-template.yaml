@@ -45,5 +45,5 @@ spec:
     - description: DeadmansSnitchIntegration
       displayName: DeadmansSnitchIntegration
       kind: DeadmansSnitchIntegration
-      name: deadmanssnitchintegrations.deadmansnitch.openshift.io
+      name: deadmanssnitchintegrations.deadmanssnitch.managed.openshift.io
       version: v1alpha1
