@@ -1,31 +1,26 @@
-package deadmanssnitch
+package controllers
 
 import (
 	"context"
-
-	"github.com/golang/mock/gomock"
-	"k8s.io/apimachinery/pkg/api/errors"
-
-	corev1 "k8s.io/api/core/v1"
-	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"testing"
 
-	"github.com/openshift/deadmanssnitch-operator/config"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	mockdms "github.com/openshift/deadmanssnitch-operator/pkg/dmsclient/mock"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 
+	"github.com/golang/mock/gomock"
 	hiveapis "github.com/openshift/hive/pkg/apis"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -85,7 +80,7 @@ func testSecret() *corev1.Secret {
 
 // return a simple test ClusterDeployment
 func testClusterDeployment() *hivev1.ClusterDeployment {
-	labelMap := map[string]string{config.ClusterDeploymentManagedLabel: "true"}
+	labelMap := map[string]string{ClusterDeploymentManagedLabel: "true"}
 	finalizers := []string{DeadMansSnitchFinalizer}
 
 	cd := hivev1.ClusterDeployment{
@@ -108,7 +103,7 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 func testSyncSet() *hivev1.SyncSet {
 	return &hivev1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + config.SyncSetPostfix,
+			Name:      testClusterName + SyncSetPostfix,
 			Namespace: testNamespace,
 		},
 		Spec: hivev1.SyncSetSpec{
@@ -125,11 +120,11 @@ func testSyncSet() *hivev1.SyncSet {
 func testReferencedSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + config.RefSecretPostfix,
+			Name:      testClusterName + RefSecretPostfix,
 			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
-			config.KeySnitchURL: []byte(testSnitchURL),
+			KeySnitchURL: []byte(testSnitchURL),
 		},
 	}
 }
@@ -171,7 +166,7 @@ func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 
 // return a ClusterDeployment with Label["managed"] == false
 func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
-	labelMap := map[string]string{config.ClusterDeploymentManagedLabel: "false"}
+	labelMap := map[string]string{ClusterDeploymentManagedLabel: "false"}
 	cd := hivev1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testClusterName,
@@ -190,8 +185,8 @@ func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 // return a ClusterDeployment with Label["noalerts"] == "true"
 func noalertsManagedClusterDeployment() *hivev1.ClusterDeployment {
 	labelMap := map[string]string{
-		config.ClusterDeploymentManagedLabel:  "true",
-		config.ClusterDeploymentNoalertsLabel: "true",
+		ClusterDeploymentManagedLabel:  "true",
+		ClusterDeploymentNoalertsLabel: "true",
 	}
 	cd := hivev1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -209,7 +204,9 @@ func noalertsManagedClusterDeployment() *hivev1.ClusterDeployment {
 }
 
 func TestReconcileClusterDeployment(t *testing.T) {
-	hiveapis.AddToScheme(scheme.Scheme)
+	err := hiveapis.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
+
 	tests := []struct {
 		name             string
 		localObjects     []runtime.Object
@@ -227,12 +224,12 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				testSecret(),
 			},
 			expectedSyncSets: &SyncSetEntry{
-				name:                     testClusterName + config.SyncSetPostfix,
-				referencedSecretName:     testClusterName + config.RefSecretPostfix,
+				name:                     testClusterName + SyncSetPostfix,
+				referencedSecretName:     testClusterName + RefSecretPostfix,
 				clusterDeploymentRefName: testClusterName,
 			},
 			expectedSecret: &SecretEntry{
-				name:                     testClusterName + config.RefSecretPostfix,
+				name:                     testClusterName + RefSecretPostfix,
 				snitchURL:                testSnitchURL,
 				clusterDeploymentRefName: testClusterName,
 			},
@@ -316,10 +313,10 @@ func TestReconcileClusterDeployment(t *testing.T) {
 
 			localmetrics.Collector = localmetrics.NewMetricsCollector()
 
-			rdms := &ReconcileDeadMansSnitch{
-				client:    mocks.fakeKubeClient,
-				scheme:    scheme.Scheme,
-				dmsclient: mocks.mockDMSClient,
+			rdms := &DeadMansSnitchReconciler{
+				Client:    mocks.fakeKubeClient,
+				Scheme:    scheme.Scheme,
+				DmsClient: mocks.mockDMSClient,
 			}
 
 			// ACT
@@ -366,10 +363,10 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 		// after mocks is defined
 		defer mocks.mockCtrl.Finish()
 
-		rdms := &ReconcileDeadMansSnitch{
-			client:    mocks.fakeKubeClient,
-			scheme:    scheme.Scheme,
-			dmsclient: mocks.mockDMSClient,
+		rdms := &DeadMansSnitchReconciler{
+			Client:    mocks.fakeKubeClient,
+			Scheme:    scheme.Scheme,
+			DmsClient: mocks.mockDMSClient,
 		}
 
 		// ACT (create)
@@ -379,12 +376,16 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
 
 		// UPDATE (noalerts)
 		clusterDeployment := &hivev1.ClusterDeployment{}
 		err = mocks.fakeKubeClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: testClusterName}, clusterDeployment)
-		clusterDeployment.Labels[config.ClusterDeploymentNoalertsLabel] = "true"
+		assert.NoError(t, err)
+
+		clusterDeployment.Labels[ClusterDeploymentNoalertsLabel] = "true"
 		err = mocks.fakeKubeClient.Update(context.TODO(), clusterDeployment)
+		assert.NoError(t, err)
 
 		// Act (delete) [2x because was seeing other SyncSet's getting deleted]
 		_, err = rdms.Reconcile(reconcile.Request{
@@ -393,18 +394,24 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
+
 		_, err = rdms.Reconcile(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      testClusterName,
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
+
 		_, err = rdms.Reconcile(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      testClusterName,
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
+
 		_, err = rdms.Reconcile(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      testClusterName,
@@ -503,7 +510,7 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 	}
 
 	for _, secret := range secretList.Items {
-		if secret.Name == testClusterName+config.RefSecretPostfix {
+		if secret.Name == testClusterName+RefSecretPostfix {
 			return false
 		}
 	}
@@ -533,13 +540,4 @@ func verifyOtherSyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	}
 
 	return found
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
 }

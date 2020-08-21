@@ -1,0 +1,7 @@
+domain: dms.openshift.io
+layout: go.kubebuilder.io/v2
+projectName: dms
+repo: github.com/openshift/deadmanssnitch-operator
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}

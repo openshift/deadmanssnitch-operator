@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/openshift/deadmanssnitch-operator/config"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,10 +40,10 @@ func DeleteFinalizer(object metav1.Object, finalizer string) {
 }
 
 // CheckClusterDeployment returns true if the ClusterDeployment is watched by this operator
-func CheckClusterDeployment(request reconcile.Request, client client.Client, reqLogger logr.Logger) (bool, *hivev1.ClusterDeployment, error) {
+func CheckClusterDeployment(request reconcile.Request, client client.Client, reqLogger logr.Logger, syncSetPostfix, clusterDeploymentManagedLabel, clusterDeploymentNoalertsLabel string) (bool, *hivev1.ClusterDeployment, error) {
 
 	// remove SyncSetPostfix from name to lookup the ClusterDeployment
-	cdName := strings.Replace(request.NamespacedName.Name, config.SyncSetPostfix, "", 1)
+	cdName := strings.Replace(request.NamespacedName.Name, syncSetPostfix, "", 1)
 	cdNamespace := request.NamespacedName.Namespace
 
 	clusterDeployment := &hivev1.ClusterDeployment{}
@@ -70,7 +69,7 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 		return false, clusterDeployment, nil
 	}
 
-	if val, ok := clusterDeployment.GetLabels()[config.ClusterDeploymentManagedLabel]; ok {
+	if val, ok := clusterDeployment.GetLabels()[clusterDeploymentManagedLabel]; ok {
 		if val != "true" {
 			reqLogger.Info("Is not a managed cluster")
 			return false, clusterDeployment, nil
@@ -82,7 +81,7 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 	}
 
 	// Return if alerts are disabled on the cluster
-	if val, ok := clusterDeployment.GetLabels()[config.ClusterDeploymentNoalertsLabel]; ok {
+	if val, ok := clusterDeployment.GetLabels()[clusterDeploymentNoalertsLabel]; ok {
 		if val == "true" {
 			reqLogger.Info("Managed cluster with Alerts disabled", "Namespace", request.Namespace, "Name", request.Name)
 			return false, clusterDeployment, nil

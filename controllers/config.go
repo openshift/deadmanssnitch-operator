@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config
+package controllers
 
 const (
 	OperatorName      string = "deadmanssnitch-operator"
@@ -26,4 +26,15 @@ const (
 	ClusterDeploymentManagedLabel string = "api.openshift.com/managed"
 	// ClusterDeploymentNoalertsLabel is the label the clusterdeployment will have if the cluster should not send alerts
 	ClusterDeploymentNoalertsLabel string = "api.openshift.com/noalerts"
+	// DeadMansSnitchFinalizer is used on ClusterDeployments to ensure we run a successful deprovision
+	// job before cleaning up the API object.
+	DeadMansSnitchFinalizer string = "dms.managed.openshift.io/deadmanssnitch"
+	// DeadMansSnitchOperatorNamespace is the namespace where this operator will run
+	DeadMansSnitchOperatorNamespace string = "deadmanssnitch-operator"
+	// DeadMansSnitchAPISecretName is the secret Name where to fetch the DMS API Key
+	DeadMansSnitchAPISecretName string = "deadmanssnitch-api-key"
+	// DeadMansSnitchAPISecretKey is the secret where to fetch the DMS API Key
+	DeadMansSnitchAPISecretKey string = "deadmanssnitch-api-key"
+	// DeadMansSnitchTagKey is the secret where to fetch the DMS API Key
+	DeadMansSnitchTagKey string = "hive-cluster-tag"
 )
