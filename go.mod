@@ -12,6 +12,7 @@ require (
 	github.com/openshift/operator-custom-metrics v0.3.1-0.20200901174648-463079905232
 	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/prometheus/client_golang v1.2.1
+	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect

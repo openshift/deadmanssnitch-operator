@@ -14,7 +14,7 @@ type DeadmansSnitchIntegrationSpec struct {
 	DmsAPIKeySecretRef corev1.SecretReference `json:"dmsAPIKeySecretRef"`
 
 	//a label selector used to find which clusterdeployment CRs receive a DMS integration based on this configuration
-	ClusterDeploymentSelector metav1.LabelSelector `json:"clusterdeploymentSelector"`
+	ClusterDeploymentSelector metav1.LabelSelector `json:"clusterDeploymentSelector"`
 
 	//name and namespace in the target cluster where the secret is synced
 	TargetSecretRef corev1.SecretReference `json:"targetSecretRef"`
@@ -23,7 +23,7 @@ type DeadmansSnitchIntegrationSpec struct {
 	Tags []string `json:"tags"`
 
 	//The postfix to append to any snitches managed by this integration.  I.e. "osd" or "rhmi"
-	SnitchNamePostFix string `json:"snitchNamePostFix"`
+	SnitchNamePostFix string `json:"snitchNamePostFix,omitempty"`
 }
 
 // DeadmansSnitchIntegrationStatus defines the observed state of DeadmansSnitchIntegration
@@ -42,10 +42,11 @@ type DeadmansSnitchIntegration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   DeadmansSnitchIntegrationSpec   `json:"spec,omitempty"`
+	Spec   DeadmansSnitchIntegrationSpec   `json:"spec"`
 	Status DeadmansSnitchIntegrationStatus `json:"status,omitempty"`
 }
 
+//go:generate ../../../../hack/generate.sh
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // DeadmansSnitchIntegrationList contains a list of DeadmansSnitchIntegration

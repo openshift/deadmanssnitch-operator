@@ -40,8 +40,18 @@ const (
 	testTag                           = "test"
 	testAPIKey                        = "abc123"
 	testOtherSyncSetPostfix           = "-something-else"
-	testsecretReferencesName          = "pd-secret"
-	snitchNamePostFix                 = "test-postfix"
+	// testsecretReferencesName          = "dms-secret"
+	snitchNamePostFix = "test-postfix"
+	//DeadMansSnitchTagKey for tests
+	deadMansSnitchTagKey string = "testTag"
+	//DeadMansSnitchFinalizer for tests
+	deadMansSnitchFinalizer string = "testfinalizer"
+	// DeadMansSnitchOperatorNamespace is the namespace where this operator will run
+	deadMansSnitchOperatorNamespace string = "deadmanssnitch-operator"
+	// DeadMansSnitchAPISecretName is the secret Name where to fetch the DMS API Key
+	deadMansSnitchAPISecretName string = "deadmanssnitch-api-key"
+	// DeadMansSnitchAPISecretKey is the secret where to fetch the DMS API Key
+	deadMansSnitchAPISecretKey string = "deadmanssnitch-api-key"
 )
 
 type SyncSetEntry struct {
@@ -78,12 +88,12 @@ func setupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
 func testSecret() *corev1.Secret {
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      DeadMansSnitchAPISecretName,
-			Namespace: DeadMansSnitchOperatorNamespace,
+			Name:      deadMansSnitchAPISecretName,
+			Namespace: deadMansSnitchOperatorNamespace,
 		},
 		Data: map[string][]byte{
-			DeadMansSnitchAPISecretKey: []byte(testAPIKey),
-			DeadMansSnitchTagKey:       []byte(testTag),
+			deadMansSnitchAPISecretKey: []byte(testAPIKey),
+			deadMansSnitchTagKey:       []byte(testTag),
 		},
 	}
 	return s
@@ -93,7 +103,7 @@ func testSecret() *corev1.Secret {
 
 func testClusterDeployment() *hivev1.ClusterDeployment {
 	labelMap := map[string]string{config.ClusterDeploymentManagedLabel: "true"}
-	finalizers := []string{DeadMansSnitchFinalizer}
+	finalizers := []string{deadMansSnitchFinalizer}
 
 	cd := hivev1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -120,7 +130,7 @@ func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchInteg
 		},
 		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
 			DmsAPIKeySecretRef: corev1.SecretReference{
-				Name:      DeadMansSnitchAPISecretKey,
+				Name:      deadMansSnitchAPISecretKey,
 				Namespace: config.OperatorNamespace,
 			},
 			ClusterDeploymentSelector: metav1.LabelSelector{
@@ -141,7 +151,7 @@ func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchInteg
 func testSyncSet() *hivev1.SyncSet {
 	return &hivev1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + "-" + snitchNamePostFix + "-dms-secret",
+			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
 			Namespace: testNamespace,
 		},
 		Spec: hivev1.SyncSetSpec{
@@ -158,7 +168,7 @@ func testSyncSet() *hivev1.SyncSet {
 func testReferencedSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + "-" + snitchNamePostFix + "-dms-secret",
+			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
 			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
@@ -262,12 +272,12 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				testDeadMansSnitchIntegration(),
 			},
 			expectedSyncSets: &SyncSetEntry{
-				name:                     testClusterName + "-" + snitchNamePostFix + "-" + "dms-secret",
-				referencedSecretName:     testClusterName + "-" + snitchNamePostFix + "-" + "dms-secret",
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+				referencedSecretName:     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
 				clusterDeploymentRefName: testClusterName,
 			},
 			expectedSecret: &SecretEntry{
-				name:                     testClusterName + "-" + snitchNamePostFix + "-" + "dms-secret",
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
 				snitchURL:                testSnitchURL,
 				clusterDeploymentRefName: testClusterName,
 			},
@@ -571,7 +581,8 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 	}
 
 	for _, secret := range secretList.Items {
-		if secret.Name == testClusterName+config.RefSecretPostfix {
+		fmt.Printf("secret %v \n", secret)
+		if secret.Name == testClusterName+"-"+snitchNamePostFix+"-"+config.RefSecretPostfix {
 			return false
 		}
 	}
@@ -594,6 +605,7 @@ func verifyOtherSyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 
 	found := false
 	for _, ss := range ssList.Items {
+		fmt.Print("TEST", ss)
 		if ss.Name == testClusterName+testOtherSyncSetPostfix {
 			// too bad, found a syncset associated with this operator
 			found = true

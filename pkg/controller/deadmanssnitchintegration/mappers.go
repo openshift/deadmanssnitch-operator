@@ -2,14 +2,11 @@ package deadmanssnitchintegration
 
 import (
 	"context"
-	//"fmt"
 	"strings"
 
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
-
-	// deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
-
+	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,6 +30,7 @@ func (m clusterDeploymentToDeadMansSnitchIntegrationsMapper) Map(mo handler.MapO
 	for _, dmsi := range dmsilist.Items {
 		selector, err := metav1.LabelSelectorAsSelector(&dmsi.Spec.ClusterDeploymentSelector)
 		if err != nil {
+			logrus.Debug(err)
 			continue
 		}
 		if selector.Matches(labels.Set(mo.Meta.GetLabels())) {
@@ -53,13 +51,12 @@ type ownedByClusterDeploymentToDeadMansSnitchIntegrationsMapper struct {
 
 func (m ownedByClusterDeploymentToDeadMansSnitchIntegrationsMapper) Map(mo handler.MapObject) []reconcile.Request {
 	relevantClusterDeployments := []*hivev1.ClusterDeployment{}
-	// dmsi := &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{}
 	for _, or := range mo.Meta.GetOwnerReferences() {
-		//log.Info(fmt.Sprintf("TOLOWER%v",or))
 		if or.APIVersion == hivev1.SchemeGroupVersion.String() && strings.ToLower(or.Kind) == "clusterdeployment" {
 			cd := &hivev1.ClusterDeployment{}
 			err := m.Client.Get(context.TODO(), client.ObjectKey{Name: or.Name, Namespace: mo.Meta.GetNamespace()}, cd)
 			if err != nil {
+				logrus.Debug(err)
 				continue
 			}
 			relevantClusterDeployments = append(relevantClusterDeployments, cd)
@@ -79,6 +76,7 @@ func (m ownedByClusterDeploymentToDeadMansSnitchIntegrationsMapper) Map(mo handl
 	for _, dmi := range dmsilist.Items {
 		selector, err := metav1.LabelSelectorAsSelector(&dmi.Spec.ClusterDeploymentSelector)
 		if err != nil {
+			logrus.Debug(err)
 			continue
 		}
 

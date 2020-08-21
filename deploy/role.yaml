@@ -27,8 +27,7 @@ rules:
   resources:
   - deployments
   - daemonsets
-  - replicasets
-  - statefulsets
+  
   verbs:
   - '*'
 - apiGroups:
@@ -66,6 +65,5 @@ rules:
   - deadmanssnitch.managed.openshift.io
   resources:
   - '*'
-  - deadmanssnitchintegrations
   verbs:
   - '*'

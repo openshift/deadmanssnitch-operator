@@ -97,7 +97,7 @@ func TestClusterDeploymentToDeadMansSnitchIntegrationsMapper(t *testing.T) {
 			expectedRequests: []reconcile.Request{},
 		},
 		{
-			name:   "ownedByClusterDeploymentToDeadMansSnitchIntegrations: matched by 3 PagerDutyIntegrations",
+			name:   "ownedByClusterDeploymentToDeadMansSnitchIntegrations: matched by 3 DeadManssnitch",
 			mapper: ownedByClusterDeploymentToDeadMansSnitchIntegrations,
 			objects: []runtime.Object{
 				deadMansSnitchIntegration("test1", map[string]string{"test": "test"}),
