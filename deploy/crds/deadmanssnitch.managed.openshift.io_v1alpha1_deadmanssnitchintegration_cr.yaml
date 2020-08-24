@@ -6,7 +6,7 @@ spec:
   dmsAPIKeySecretRef:
     name: deadmanssnitch-api-key
     namespace: deadmanssnitch-operator
-  clusterdeploymentSelector:
+  clusterDeploymentSelector:
     matchLabels:
         api.openshift.com/test: "true"
   targetSecretRef:

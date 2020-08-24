@@ -2,7 +2,6 @@
 
 # Commands need to be run from project root
 cd "$( dirname "${BASH_SOURCE[0]}" )"/..
-#"$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 operator-sdk generate k8s
 operator-sdk generate crds

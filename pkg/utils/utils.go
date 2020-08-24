@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/deadmanssnitch-operator/config"
-	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -100,9 +99,6 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 // DeleteSyncSet deletes a SyncSet
 func DeleteSyncSet(name string, namespace string, client client.Client) error {
 	syncset := &hivev1.SyncSet{}
-	dmsi := &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{}
-	clustDeploy := &hivev1.ClusterDeployment{}
-
 	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, syncset)
 
 	if err != nil {
@@ -118,7 +114,6 @@ func DeleteSyncSet(name string, namespace string, client client.Client) error {
 
 	// Only delete the syncset, this is just cleanup of the synced secret.
 	// The ClusterDeployment controller manages deletion of the deadmanssnitch serivce.
-	log.Info("Deleting SyncSet", "Namespace", namespace, "Name", name, "DeadMansSnitchIntegreation.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", clustDeploy.Name, "cluster-deployment.Namespace:", clustDeploy.Namespace)
 	err = client.Delete(context.TODO(), syncset)
 	if err != nil {
 		if errors.IsNotFound(err) {

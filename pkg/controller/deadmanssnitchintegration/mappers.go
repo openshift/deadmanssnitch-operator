@@ -2,8 +2,6 @@ package deadmanssnitchintegration
 
 import (
 	"context"
-	"strings"
-
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	"github.com/sirupsen/logrus"
@@ -13,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 )
 
 type clusterDeploymentToDeadMansSnitchIntegrationsMapper struct {
