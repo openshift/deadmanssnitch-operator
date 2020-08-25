@@ -40,18 +40,12 @@ const (
 	testTag                           = "test"
 	testAPIKey                        = "abc123"
 	testOtherSyncSetPostfix           = "-something-else"
-	// testsecretReferencesName          = "dms-secret"
-	snitchNamePostFix = "test-postfix"
-	//DeadMansSnitchTagKey for tests
-	deadMansSnitchTagKey string = "testTag"
-	//DeadMansSnitchFinalizer for tests
-	deadMansSnitchFinalizer string = "testfinalizer"
-	// DeadMansSnitchOperatorNamespace is the namespace where this operator will run
-	deadMansSnitchOperatorNamespace string = "deadmanssnitch-operator"
-	// DeadMansSnitchAPISecretName is the secret Name where to fetch the DMS API Key
-	deadMansSnitchAPISecretName string = "deadmanssnitch-api-key"
-	// DeadMansSnitchAPISecretKey is the secret where to fetch the DMS API Key
-	deadMansSnitchAPISecretKey string = "deadmanssnitch-api-key"
+	snitchNamePostFix                 = "test-postfix"
+	deadMansSnitchTagKey              = "testTag"
+	deadMansSnitchFinalizer           = "testfinalizer"
+	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
+	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
+	deadMansSnitchAPISecretKey        = "deadmanssnitch-api-key"
 )
 
 type SyncSetEntry struct {
