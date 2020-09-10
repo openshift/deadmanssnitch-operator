@@ -209,7 +209,8 @@ func noalertsManagedClusterDeployment() *hivev1.ClusterDeployment {
 }
 
 func TestReconcileClusterDeployment(t *testing.T) {
-	hiveapis.AddToScheme(scheme.Scheme)
+	err := hiveapis.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
 	tests := []struct {
 		name             string
 		localObjects     []runtime.Object
@@ -379,12 +380,15 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
 
 		// UPDATE (noalerts)
 		clusterDeployment := &hivev1.ClusterDeployment{}
 		err = mocks.fakeKubeClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: testClusterName}, clusterDeployment)
+		assert.NoError(t, err)
 		clusterDeployment.Labels[config.ClusterDeploymentNoalertsLabel] = "true"
 		err = mocks.fakeKubeClient.Update(context.TODO(), clusterDeployment)
+		assert.NoError(t, err)
 
 		// Act (delete) [2x because was seeing other SyncSet's getting deleted]
 		_, err = rdms.Reconcile(reconcile.Request{
@@ -393,24 +397,28 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
 		_, err = rdms.Reconcile(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      testClusterName,
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
 		_, err = rdms.Reconcile(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      testClusterName,
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
 		_, err = rdms.Reconcile(reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      testClusterName,
 				Namespace: testNamespace,
 			},
 		})
+		assert.NoError(t, err)
 
 		// ASSERT (no unexpected syncset)
 		assert.NoError(t, err, "Unexpected Error")
@@ -533,13 +541,4 @@ func verifyOtherSyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	}
 
 	return found
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
 }
