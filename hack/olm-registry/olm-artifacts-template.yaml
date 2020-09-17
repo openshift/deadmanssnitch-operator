@@ -10,6 +10,10 @@ parameters:
   value: staging
 - name: IMAGE_TAG
   value: latest
+- name: SILENT_ALERT_LEGALENTITY_IDS
+  value: '["None"]'
+- name: DEADMANSSNITCH_OSD_TAGS
+  required: true
 
 objects:
 - apiVersion: operators.coreos.com/v1alpha1
@@ -39,3 +43,25 @@ objects:
     name: deadmanssnitch-operator
     source: deadmanssnitch-operator-catalog
     sourceNamespace: deadmanssnitch-operator
+
+- apiVersion: deadmanssnitch.managed.openshift.io/v1alpha1
+  kind: DeadmansSnitchIntegration
+  metadata:
+    name: osd
+  spec:
+    snitchNamePostFix: ""
+    dmsAPIKeySecretRef:
+      name: deadmanssnitch-api-key
+      namespace: deadmanssnitch-operator
+    clusterDeploymentSelector:
+      matchExpressions:
+      - key: api.openshift.com/managed
+        operator: In
+        values: ["true"]
+      - key: api.openshift.com/legal-entity-id
+        operator: NotIn
+        values: ${{SILENT_ALERT_LEGALENTITY_IDS}}
+    targetSecretRef:
+      name: dms-secret
+      namespace: openshift-monitoring
+    tags: ${{DEADMANSSNITCH_OSD_TAGS}}
