@@ -161,3 +161,22 @@ func DeleteRefSecret(name string, namespace string, client client.Client) error 
 
 	return nil
 }
+
+// DmsSnitchName test
+func DmsSnitchName(clusterName, baseDomain, optionalPostFix string) string {
+	snitchName := clusterName + "." + baseDomain
+	if optionalPostFix != "" {
+		snitchName += "-" + optionalPostFix
+	}
+	return snitchName
+
+}
+
+func SecretName(clusterName, optionalPostFix, refSecretPostfix string) string {
+	snitchName := clusterName + "-" + config.RefSecretPostfix
+	if optionalPostFix != "" {
+		snitchName = clusterName + "-" + optionalPostFix + "-" + refSecretPostfix
+	}
+	return snitchName
+
+}

@@ -45,7 +45,6 @@ const (
 	deadMansSnitchFinalizer           = "testfinalizer"
 	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
 	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
-	deadMansSnitchAPISecretKey        = "deadmanssnitch-api-key"
 )
 
 type SyncSetEntry struct {
@@ -136,6 +135,31 @@ func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchInteg
 			},
 			Tags:              []string{testTag},
 			SnitchNamePostFix: snitchNamePostFix,
+		},
+	}
+
+}
+func testDeadMansSnitchIntegrationEmptyPostfix() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
+
+	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testDeadMansSnitchintegrationName,
+			Namespace: config.OperatorNamespace,
+		},
+		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
+			DmsAPIKeySecretRef: corev1.SecretReference{
+				Name:      deadMansSnitchAPISecretKey,
+				Namespace: config.OperatorNamespace,
+			},
+			ClusterDeploymentSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{config.ClusterDeploymentManagedLabel: "true"},
+			},
+			TargetSecretRef: corev1.SecretReference{
+				Name:      "test-secret",
+				Namespace: testNamespace,
+			},
+			Tags:              []string{testTag},
+			SnitchNamePostFix: "",
 		},
 	}
 
@@ -350,6 +374,37 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
 					{Token: testSnitchToken},
 				}, nil).Times(1)
+			},
+		},
+		{
+			name: "Test Empty postfix",
+			localObjects: []runtime.Object{
+				testClusterDeployment(),
+				testSecret(),
+				testDeadMansSnitchIntegrationEmptyPostfix(),
+			},
+			expectedSyncSets: &SyncSetEntry{
+				name:                     testClusterName + "-" + config.RefSecretPostfix,
+				referencedSecretName:     testClusterName + "-" + config.RefSecretPostfix,
+				clusterDeploymentRefName: testClusterName,
+			},
+			expectedSecret: &SecretEntry{
+				name:                     testClusterName + "-" + config.RefSecretPostfix,
+				snitchURL:                testSnitchURL,
+				clusterDeploymentRefName: testClusterName,
+			},
+			verifySyncSets: verifySyncSetExists,
+			verifySecret:   verifySecretExists,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL, Tags: []string{testTag}}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{
+						CheckInURL: testSnitchURL,
+						Status:     "pending",
+					},
+				}, nil).Times(2)
+				r.CheckIn(gomock.Any()).Return(nil).Times(1)
 			},
 		},
 	}
@@ -599,7 +654,6 @@ func verifyOtherSyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 
 	found := false
 	for _, ss := range ssList.Items {
-		fmt.Print("TEST", ss)
 		if ss.Name == testClusterName+testOtherSyncSetPostfix {
 			// too bad, found a syncset associated with this operator
 			found = true
