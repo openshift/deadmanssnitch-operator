@@ -46,6 +46,7 @@ func (m clusterDeploymentToDeadMansSnitchIntegrationsMapper) Map(mo handler.MapO
 	}
 	return requests
 }
+
 type ownedByClusterDeploymentToDeadMansSnitchIntegrationsMapper struct {
 	Client client.Client
 }

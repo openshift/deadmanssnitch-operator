@@ -15,12 +15,10 @@
 package localmetrics
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 	"net/url"
 	"strings"
-
-	dms "github.com/openshift/deadmanssnitch-operator/pkg/controller/deadmanssnitchintegration"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (

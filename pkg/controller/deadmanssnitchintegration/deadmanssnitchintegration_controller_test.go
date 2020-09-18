@@ -9,6 +9,7 @@ import (
 
 	dmsapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
 	deadmansnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -360,9 +361,11 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			defer mocks.mockCtrl.Finish()
 
 			rdms := &ReconcileDeadmansSnitchIntegration{
-				client:    mocks.fakeKubeClient,
-				scheme:    scheme.Scheme,
-				dmsclient: func(apiKey string) dmsclient.Client { return mocks.mockDMSClient },
+				client: mocks.fakeKubeClient,
+				scheme: scheme.Scheme,
+				dmsclient: func(apiKey string, collector *localmetrics.MetricsCollector) dmsclient.Client {
+					return mocks.mockDMSClient
+				},
 			}
 
 			// ACT
@@ -411,9 +414,11 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 		defer mocks.mockCtrl.Finish()
 
 		rdms := &ReconcileDeadmansSnitchIntegration{
-			client:    mocks.fakeKubeClient,
-			scheme:    scheme.Scheme,
-			dmsclient: func(apiKey string) dmsclient.Client { return mocks.mockDMSClient },
+			client: mocks.fakeKubeClient,
+			scheme: scheme.Scheme,
+			dmsclient: func(apiKey string, collector *localmetrics.MetricsCollector) dmsclient.Client {
+				return mocks.mockDMSClient
+			},
 		}
 
 		// ACT (create)

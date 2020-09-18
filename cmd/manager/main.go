@@ -120,10 +120,11 @@ func main() {
 	}
 
 	localmetrics.Collector = localmetrics.NewMetricsCollector()
-	metricsServer := metrics.NewBuilder().WithPort(metricsPort).WithPath(metricsPath).
+	metricsServer := metrics.NewBuilder(operatorconfig.OperatorNamespace, operatorconfig.OperatorName).
+		WithPort(metricsPort).
+		WithPath(metricsPath).
 		WithCollector(localmetrics.Collector).
 		WithRoute().
-		WithServiceName(operatorconfig.OperatorName).
 		GetConfig()
 
 	// Configure metrics if it errors log the error but continue

@@ -7,6 +7,7 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmansnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 
@@ -122,7 +123,7 @@ type ReconcileDeadmansSnitchIntegration struct {
 	// that reads objects from the cache and writes to the apiserver
 	client    client.Client
 	scheme    *runtime.Scheme
-	dmsclient func(apiKey string) dmsclient.Client
+	dmsclient func(authToken string, collector *localmetrics.MetricsCollector) dmsclient.Client
 }
 
 // Reconcile reads that state of the cluster for a DeadmansSnitchIntegration object and makes changes based on the state read
@@ -150,7 +151,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	dmsc := r.dmsclient(dmsAPIKey)
+	dmsc := r.dmsclient(dmsAPIKey, localmetrics.Collector)
 
 	matchingClusterDeployments, err := r.getMatchingClusterDeployment(dmsi)
 	if err != nil {

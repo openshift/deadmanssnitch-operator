@@ -13,9 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-		logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 )
 
 var log = logf.Log.WithName("")
@@ -132,7 +131,7 @@ func DeleteSyncSet(name string, namespace string, client client.Client) error {
 }
 
 // DeleteRefSecret deletes Secret which referenced by SyncSet
-func DeleteRefSecret(name string, namespace string, client client.Client, ) error {
+func DeleteRefSecret(name string, namespace string, client client.Client) error {
 	secret := &corev1.Secret{}
 	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, secret)
 

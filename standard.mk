@@ -26,10 +26,12 @@ OPERATOR_DOCKERFILE ?=build/ci-operator/Dockerfile
 
 BINFILE=build/_output/bin/$(OPERATOR_NAME)
 MAINPACKAGE=./cmd/manager
+unexport GOFLAGS
 GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 GOFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
 
-TESTTARGETS := $(shell go list -e ./... | egrep -v "/(vendor)/")
+CONTAINER_ENGINE?=docker
+
 # ex, -v
 TESTOPTS := 
 
@@ -47,17 +49,17 @@ isclean:
 
 .PHONY: build
 build: isclean envtest
-	docker build . -f $(OPERATOR_DOCKERFILE) -t $(OPERATOR_IMAGE_URI)
-	docker tag $(OPERATOR_IMAGE_URI) $(OPERATOR_IMAGE_URI_LATEST)
+	$(CONTAINER_ENGINE) build . -f $(OPERATOR_DOCKERFILE) -t $(OPERATOR_IMAGE_URI)
+	$(CONTAINER_ENGINE) tag $(OPERATOR_IMAGE_URI) $(OPERATOR_IMAGE_URI_LATEST)
 
 .PHONY: push
 push:
-	docker push $(OPERATOR_IMAGE_URI)
-	docker push $(OPERATOR_IMAGE_URI_LATEST)
+	$(CONTAINER_ENGINE) push $(OPERATOR_IMAGE_URI)
+	$(CONTAINER_ENGINE) push $(OPERATOR_IMAGE_URI_LATEST)
 
 .PHONY: gocheck
 gocheck: ## Lint code
-	gofmt -s -l $(shell go list -f '{{ .Dir }}' ./... ) | grep ".*\.go"; if [ "$$?" = "0" ]; then gofmt -s -d $(shell go list -f '{{ .Dir }}' ./... ); exit 1; fi
+	gofmt -s -l . | grep ".*\.go"; if [ "$$?" = "0" ]; then gofmt -s -d .; exit 1; fi
 	go vet ./cmd/... ./pkg/...
 
 .PHONY: gobuild
@@ -66,7 +68,7 @@ gobuild: gocheck gotest ## Build binary
 
 .PHONY: gotest
 gotest:
-	go test $(TESTOPTS) $(TESTTARGETS)
+	go test $(TESTOPTS) ./...
 
 .PHONY: envtest
 envtest:
