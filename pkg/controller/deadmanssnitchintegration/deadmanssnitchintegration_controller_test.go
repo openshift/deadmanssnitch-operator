@@ -404,7 +404,7 @@ func TestRemoveAlertsAfterCreate(t *testing.T) {
 				r.Delete(gomock.Any()).Return(true, nil).Times(4)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
 					{Token: testSnitchToken},
-				}, nil).Times(6)
+				}, nil).AnyTimes()
 			}
 
 		setupDMSMock(mocks.mockDMSClient.EXPECT())
