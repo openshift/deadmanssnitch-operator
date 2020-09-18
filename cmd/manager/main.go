@@ -32,7 +32,8 @@ import (
 // Change below variables to serve metrics on different host or port.
 var (
 	metricsPath = "/metrics"
-	metricsPort = "8080"
+	// metricsPort the port on which metrics is hosted, don't pick one that's already used
+	metricsPort = "8081"
 )
 var log = logf.Log.WithName("cmd")
 
