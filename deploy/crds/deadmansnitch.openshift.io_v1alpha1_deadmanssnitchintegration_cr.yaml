@@ -1,9 +1,8 @@
 apiVersion: deadmansnitch.openshift.io/v1alpha1
 kind: DeadmansSnitchIntegration
 metadata:
-  name: example-deadmanssnitchintegration
+  name: test-deadmanssnitchintegration
 spec:
-  snitchNamePostFix: example
   dmsAPIKeySecretRef:
     name: deadmanssnitch-api-key
     namespace: deadmanssnitch-operator
