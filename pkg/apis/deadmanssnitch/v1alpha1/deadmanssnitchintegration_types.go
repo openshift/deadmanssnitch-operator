@@ -20,7 +20,7 @@ type DeadmansSnitchIntegrationSpec struct {
 	TargetSecretRef corev1.SecretReference `json:"targetSecretRef"`
 
 	//Array of strings that are applied to the service created in DMS
-	Tags []string `json:"tags"`
+	Tags []string `json:"tags,omitempty"`
 
 	//The postfix to append to any snitches managed by this integration.  I.e. "osd" or "rhmi"
 	SnitchNamePostFix string `json:"snitchNamePostFix,omitempty"`
