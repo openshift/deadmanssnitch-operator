@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	dmsapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
-	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmansnitch/v1alpha1"
+	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
