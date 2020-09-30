@@ -139,8 +139,8 @@ func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchInteg
 	}
 
 }
-func testDeadMansSnitchIntegrationEmptyPostfix() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
 
+func testDeadMansSnitchIntegrationEmptyPostfix() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
 	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testDeadMansSnitchintegrationName,
@@ -158,11 +158,32 @@ func testDeadMansSnitchIntegrationEmptyPostfix() *deadmanssnitchv1alpha1.Deadman
 				Name:      "test-secret",
 				Namespace: testNamespace,
 			},
-			Tags:              []string{testTag},
-			SnitchNamePostFix: "",
+			Tags: []string{testTag},
 		},
 	}
+}
 
+func testDeadMansSnitchIntegrationEmptyTags() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
+	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testDeadMansSnitchintegrationName,
+			Namespace: config.OperatorNamespace,
+		},
+		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
+			DmsAPIKeySecretRef: corev1.SecretReference{
+				Name:      deadMansSnitchAPISecretKey,
+				Namespace: config.OperatorNamespace,
+			},
+			ClusterDeploymentSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{config.ClusterDeploymentManagedLabel: "true"},
+			},
+			TargetSecretRef: corev1.SecretReference{
+				Name:      "test-secret",
+				Namespace: testNamespace,
+			},
+			SnitchNamePostFix: snitchNamePostFix,
+		},
+	}
 }
 
 // testSyncSet returns a SyncSet for an existing testClusterDeployment to use in testing.

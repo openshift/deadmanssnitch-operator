@@ -169,14 +169,12 @@ func DmsSnitchName(clusterName, baseDomain, optionalPostFix string) string {
 		snitchName += "-" + optionalPostFix
 	}
 	return snitchName
-
 }
 
-func SecretName(clusterName, optionalPostFix, refSecretPostfix string) string {
+func SecretName(clusterName, optionalPostFix string) string {
 	secretName := clusterName + "-" + config.RefSecretPostfix
 	if optionalPostFix != "" {
-		secretName = clusterName + "-" + optionalPostFix + "-" + refSecretPostfix
+		secretName = clusterName + "-" + optionalPostFix + "-" + config.RefSecretPostfix
 	}
 	return secretName
-
 }
