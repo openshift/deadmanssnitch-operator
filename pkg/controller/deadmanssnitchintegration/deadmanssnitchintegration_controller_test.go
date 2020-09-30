@@ -42,7 +42,7 @@ const (
 	testOtherSyncSetPostfix           = "-something-else"
 	snitchNamePostFix                 = "test-postfix"
 	deadMansSnitchTagKey              = "testTag"
-	deadMansSnitchFinalizer           = "testfinalizer"
+	deadMansSnitchFinalizer           = "dms.managed.openshift.io/deadmanssnitch-" + testDeadMansSnitchintegrationName
 	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
 	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
 )
@@ -269,27 +269,6 @@ func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	return &cd
 }
 
-// return a ClusterDeployment with Label["noalerts"] == "true"
-func noalertsManagedClusterDeployment() *hivev1.ClusterDeployment {
-	labelMap := map[string]string{
-		config.ClusterDeploymentManagedLabel:  "true",
-		config.ClusterDeploymentNoalertsLabel: "true",
-	}
-	cd := hivev1.ClusterDeployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName,
-			Namespace: testNamespace,
-			Labels:    labelMap,
-		},
-		Spec: hivev1.ClusterDeploymentSpec{
-			ClusterName: testClusterName,
-		},
-	}
-	cd.Spec.Installed = true
-
-	return &cd
-}
-
 func TestReconcileClusterDeployment(t *testing.T) {
 	hiveapis.AddToScheme(scheme.Scheme)
 	dmsapis.AddToScheme(scheme.Scheme)
@@ -332,6 +311,8 @@ func TestReconcileClusterDeployment(t *testing.T) {
 					},
 				}, nil).Times(2)
 				r.CheckIn(gomock.Any()).Return(nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -346,10 +327,13 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			verifySyncSets:   verifyNoSyncSet,
 			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
 				r.Delete(gomock.Any()).Return(true, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
 					{Token: testSnitchToken},
 				}, nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -363,7 +347,13 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
 			verifySecret:     verifyNoSecret,
-			setupDMSMock:     func(r *mockdms.MockClientMockRecorder) {},
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Times(0)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
+			},
 		},
 		{
 			name: "Test Non managed ClusterDeployment",
@@ -377,24 +367,11 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			verifySyncSets:   verifyNoSyncSet,
 			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
-			},
-		},
-		{
-			name: "Test Create Managed ClusterDeployment with Alerts disabled",
-			localObjects: []runtime.Object{
-				testSecret(),
-				noalertsManagedClusterDeployment(),
-				testDeadMansSnitchIntegration(),
-			},
-			expectedSyncSets: &SyncSetEntry{},
-			expectedSecret:   &SecretEntry{},
-			verifySyncSets:   verifyNoSyncSet,
-			verifySecret:     verifyNoSecret,
-			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
-				r.Delete(gomock.Any()).Return(true, nil).Times(1)
-				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
-					{Token: testSnitchToken},
-				}, nil).Times(1)
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Times(0)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -426,6 +403,8 @@ func TestReconcileClusterDeployment(t *testing.T) {
 					},
 				}, nil).Times(2)
 				r.CheckIn(gomock.Any()).Return(nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
 			},
 		},
 	}
@@ -448,8 +427,20 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				},
 			}
 
-			// ACT
-			_, err := rdms.Reconcile(reconcile.Request{
+			// run reconcile multiple times to verify API calls to DMS are minimal
+			_, err1 := rdms.Reconcile(reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testDeadMansSnitchintegrationName,
+					Namespace: config.OperatorNamespace,
+				},
+			})
+			_, err2 := rdms.Reconcile(reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testDeadMansSnitchintegrationName,
+					Namespace: config.OperatorNamespace,
+				},
+			})
+			_, err3 := rdms.Reconcile(reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      testDeadMansSnitchintegrationName,
 					Namespace: config.OperatorNamespace,
@@ -459,95 +450,13 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			// ASSERT
 			//assert.Equal(t, test.expectedGetError, getErr)
 
-			assert.NoError(t, err, "Unexpected Error")
+			assert.NoError(t, err1, "Unexpected Error with Reconcile (1 of 3)")
+			assert.NoError(t, err2, "Unexpected Error with Reconcile (2 of 3)")
+			assert.NoError(t, err3, "Unexpected Error with Reconcile (2 of 3)")
 			assert.True(t, test.verifySyncSets(mocks.fakeKubeClient, test.expectedSyncSets))
 			assert.True(t, test.verifySecret(mocks.fakeKubeClient, test.expectedSecret))
 		})
 	}
-}
-
-func TestRemoveAlertsAfterCreate(t *testing.T) {
-	// test going from having alerts to not having alerts
-	t.Run("Test Managed Cluster that later sets noalerts label", func(t *testing.T) {
-		// ARRANGE
-		mocks := setupDefaultMocks(t, []runtime.Object{
-			testClusterDeployment(),
-			testSecret(),
-			testSyncSet(),
-			testReferencedSecret(),
-			testOtherSyncSet(),
-			testDeadMansSnitchIntegration(),
-		})
-		//test.setupDMSMock(mocks.mockDMSClient.EXPECT())
-		setupDMSMock :=
-			func(r *mockdms.MockClientMockRecorder) {
-				r.Delete(gomock.Any()).Return(true, nil).Times(4)
-				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
-					{Token: testSnitchToken},
-				}, nil).AnyTimes()
-			}
-
-		setupDMSMock(mocks.mockDMSClient.EXPECT())
-
-		// This is necessary for the mocks to report failures like methods not being called an expected number of times.
-		// after mocks is defined
-		defer mocks.mockCtrl.Finish()
-
-		rdms := &ReconcileDeadmansSnitchIntegration{
-			client: mocks.fakeKubeClient,
-			scheme: scheme.Scheme,
-			dmsclient: func(apiKey string, collector *localmetrics.MetricsCollector) dmsclient.Client {
-				return mocks.mockDMSClient
-			},
-		}
-
-		// ACT (create)
-		_, err := rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testDeadMansSnitchintegrationName,
-				Namespace: config.OperatorName,
-			},
-		})
-
-		// UPDATE (noalerts)
-		clusterDeployment := &hivev1.ClusterDeployment{}
-		err = mocks.fakeKubeClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: testClusterName}, clusterDeployment)
-		clusterDeployment.Labels[config.ClusterDeploymentNoalertsLabel] = "true"
-		err = mocks.fakeKubeClient.Update(context.TODO(), clusterDeployment)
-
-		// Act (delete) [2x because was seeing other SyncSet's getting deleted]
-		_, err = rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testDeadMansSnitchintegrationName,
-				Namespace: config.OperatorName,
-			},
-		})
-		_, err = rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testDeadMansSnitchintegrationName,
-				Namespace: config.OperatorName,
-			},
-		})
-		_, err = rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testDeadMansSnitchintegrationName,
-				Namespace: config.OperatorName,
-			},
-		})
-		_, err = rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testDeadMansSnitchintegrationName,
-				Namespace: config.OperatorName,
-			},
-		})
-
-		// ASSERT (no unexpected syncset)
-		assert.NoError(t, err, "Unexpected Error")
-		assert.True(t, verifyNoSyncSet(mocks.fakeKubeClient, &SyncSetEntry{}))
-		assert.True(t, verifyNoSecret(mocks.fakeKubeClient, &SecretEntry{}))
-		// verify the "other" syncset didn't get deleted
-		assert.True(t, verifyOtherSyncSetExists(mocks.fakeKubeClient, &SyncSetEntry{}))
-	})
 }
 
 func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {

@@ -16,7 +16,6 @@ The operator runs on hive. It has a single controller. It:
 - Pays attention to [ClusterDeployments](https://github.com/openshift/hive/blob/master/config/crds/hive.openshift.io_clusterdeployments.yaml) that are:
   - Installed (`spec.installed=true`)
   - Managed (label `api.openshift.com/managed="true"`)
-  - Not silenced (label `api.openshift.com/noalerts!="true"`)
 - For each such ClusterDeployment:
   - Adds a finalizer to the ClusterDeployment to ensure we get a chance to clean up when it is deleted.
   - Creates a Snitch

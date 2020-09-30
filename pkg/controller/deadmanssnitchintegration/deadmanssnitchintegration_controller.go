@@ -170,13 +170,15 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	}
 
 	for _, clusterdeployment := range matchingClusterDeployments.Items {
-		if clusterdeployment.DeletionTimestamp != nil || clusterdeployment.Labels[config.ClusterDeploymentNoalertsLabel] == "true" {
-			err = r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
-			if err != nil {
-				return reconcile.Result{}, err
+		if clusterdeployment.DeletionTimestamp != nil {
+			deadMansSnitchFinalizer := "dms.managed.openshift.io/deadmanssnitch-" + dmsi.Name
+			if utils.HasFinalizer(&clusterdeployment, deadMansSnitchFinalizer) {
+				err = r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
 			}
 			return reconcile.Result{}, nil
-
 		}
 
 		if !clusterdeployment.Spec.Installed {
@@ -431,7 +433,6 @@ func newSyncSet(namespace string, dmsSecret string, clusterDeploymentName string
 
 // delete snitches,secrets and syncset associated with the cluster deployment that has been deleted
 func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, clusterDeployment *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
-
 	deadMansSnitchFinalizer := "dms.managed.openshift.io/deadmanssnitch-" + dmsi.Name
 	logger := log.WithValues("DeadMansSnitchIntegreation.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", clusterDeployment.Name, "cluster-deployment.Namespace:", clusterDeployment.Namespace)
 	// Delete the dms
