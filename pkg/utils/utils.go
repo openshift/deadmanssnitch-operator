@@ -13,8 +13,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
+
+var log = logf.Log.WithName("")
 
 // HasFinalizer returns true if the given object has the given finalizer
 func HasFinalizer(object metav1.Object, finalizer string) bool {
@@ -81,20 +84,12 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 		return false, clusterDeployment, nil
 	}
 
-	// Return if alerts are disabled on the cluster
-	if val, ok := clusterDeployment.GetLabels()[config.ClusterDeploymentNoalertsLabel]; ok {
-		if val == "true" {
-			reqLogger.Info("Managed cluster with Alerts disabled", "Namespace", request.Namespace, "Name", request.Name)
-			return false, clusterDeployment, nil
-		}
-	}
-
 	// made it this far so it's both managed and has alerts enabled
 	return true, clusterDeployment, nil
 }
 
 // DeleteSyncSet deletes a SyncSet
-func DeleteSyncSet(name string, namespace string, client client.Client, reqLogger logr.Logger) error {
+func DeleteSyncSet(name string, namespace string, client client.Client) error {
 	syncset := &hivev1.SyncSet{}
 	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, syncset)
 
@@ -110,8 +105,7 @@ func DeleteSyncSet(name string, namespace string, client client.Client, reqLogge
 	}
 
 	// Only delete the syncset, this is just cleanup of the synced secret.
-	// The ClusterDeployment controller manages deletion of the pagerduty serivce.
-	reqLogger.Info("Deleting SyncSet", "Namespace", namespace, "Name", name)
+	// The ClusterDeployment controller manages deletion of the deadmanssnitch serivce.
 	err = client.Delete(context.TODO(), syncset)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -128,7 +122,7 @@ func DeleteSyncSet(name string, namespace string, client client.Client, reqLogge
 }
 
 // DeleteRefSecret deletes Secret which referenced by SyncSet
-func DeleteRefSecret(name string, namespace string, client client.Client, reqLogger logr.Logger) error {
+func DeleteRefSecret(name string, namespace string, client client.Client) error {
 	secret := &corev1.Secret{}
 	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, secret)
 
@@ -144,7 +138,7 @@ func DeleteRefSecret(name string, namespace string, client client.Client, reqLog
 	}
 
 	// Delete the secret
-	reqLogger.Info("Deleting Referenced Secret", "Namespace", namespace, "Name", name)
+	log.Info("Deleting Referenced Secret", "Namespace", namespace, "Name", name)
 	err = client.Delete(context.TODO(), secret)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -158,4 +152,21 @@ func DeleteRefSecret(name string, namespace string, client client.Client, reqLog
 	}
 
 	return nil
+}
+
+// DmsSnitchName test
+func DmsSnitchName(clusterName, baseDomain, optionalPostFix string) string {
+	snitchName := clusterName + "." + baseDomain
+	if optionalPostFix != "" {
+		snitchName += "-" + optionalPostFix
+	}
+	return snitchName
+}
+
+func SecretName(clusterName, optionalPostFix string) string {
+	secretName := clusterName + "-" + config.RefSecretPostfix
+	if optionalPostFix != "" {
+		secretName = clusterName + "-" + optionalPostFix + "-" + config.RefSecretPostfix
+	}
+	return secretName
 }

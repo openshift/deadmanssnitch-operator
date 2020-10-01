@@ -1,11 +1,15 @@
-package deadmanssnitch
+package deadmanssnitchintegration
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golang/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	dmsapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
+	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -14,7 +18,6 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/config"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	mockdms "github.com/openshift/deadmanssnitch-operator/pkg/dmsclient/mock"
-	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 
 	hiveapis "github.com/openshift/hive/pkg/apis"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
@@ -29,13 +32,19 @@ import (
 )
 
 const (
-	testClusterName         = "testCluster"
-	testNamespace           = "testNamespace"
-	testSnitchURL           = "https://deadmanssnitch.com/12345"
-	testSnitchToken         = "abcdefg"
-	testTag                 = "hive-test"
-	testAPIKey              = "abc123"
-	testOtherSyncSetPostfix = "-something-else"
+	testDeadMansSnitchintegrationName = "testDeadMansSnitchIntegration"
+	testClusterName                   = "testClusterName"
+	testNamespace                     = "testNamespace"
+	testSnitchURL                     = "https://deadmanssnitch.com/12345"
+	testSnitchToken                   = "abcdefg"
+	testTag                           = "test"
+	testAPIKey                        = "abc123"
+	testOtherSyncSetPostfix           = "-something-else"
+	snitchNamePostFix                 = "test-postfix"
+	deadMansSnitchTagKey              = "testTag"
+	deadMansSnitchFinalizer           = "dms.managed.openshift.io/deadmanssnitch-" + testDeadMansSnitchintegrationName
+	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
+	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
 )
 
 type SyncSetEntry struct {
@@ -72,21 +81,22 @@ func setupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
 func testSecret() *corev1.Secret {
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      DeadMansSnitchAPISecretName,
-			Namespace: DeadMansSnitchOperatorNamespace,
+			Name:      deadMansSnitchAPISecretName,
+			Namespace: deadMansSnitchOperatorNamespace,
 		},
 		Data: map[string][]byte{
-			DeadMansSnitchAPISecretKey: []byte(testAPIKey),
-			DeadMansSnitchTagKey:       []byte(testTag),
+			deadMansSnitchAPISecretKey: []byte(testAPIKey),
+			deadMansSnitchTagKey:       []byte(testTag),
 		},
 	}
 	return s
 }
 
 // return a simple test ClusterDeployment
+
 func testClusterDeployment() *hivev1.ClusterDeployment {
 	labelMap := map[string]string{config.ClusterDeploymentManagedLabel: "true"}
-	finalizers := []string{DeadMansSnitchFinalizer}
+	finalizers := []string{deadMansSnitchFinalizer}
 
 	cd := hivev1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -97,18 +107,90 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 		},
 		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
+			BaseDomain:  "base.domain",
 		},
 	}
 	cd.Spec.Installed = true
 
 	return &cd
 }
+func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
+
+	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testDeadMansSnitchintegrationName,
+			Namespace: config.OperatorNamespace,
+		},
+		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
+			DmsAPIKeySecretRef: corev1.SecretReference{
+				Name:      deadMansSnitchAPISecretKey,
+				Namespace: config.OperatorNamespace,
+			},
+			ClusterDeploymentSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{config.ClusterDeploymentManagedLabel: "true"},
+			},
+			TargetSecretRef: corev1.SecretReference{
+				Name:      "test-secret",
+				Namespace: testNamespace,
+			},
+			Tags:              []string{testTag},
+			SnitchNamePostFix: snitchNamePostFix,
+		},
+	}
+
+}
+
+func testDeadMansSnitchIntegrationEmptyPostfix() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
+	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testDeadMansSnitchintegrationName,
+			Namespace: config.OperatorNamespace,
+		},
+		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
+			DmsAPIKeySecretRef: corev1.SecretReference{
+				Name:      deadMansSnitchAPISecretKey,
+				Namespace: config.OperatorNamespace,
+			},
+			ClusterDeploymentSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{config.ClusterDeploymentManagedLabel: "true"},
+			},
+			TargetSecretRef: corev1.SecretReference{
+				Name:      "test-secret",
+				Namespace: testNamespace,
+			},
+			Tags: []string{testTag},
+		},
+	}
+}
+
+func testDeadMansSnitchIntegrationEmptyTags() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
+	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testDeadMansSnitchintegrationName,
+			Namespace: config.OperatorNamespace,
+		},
+		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
+			DmsAPIKeySecretRef: corev1.SecretReference{
+				Name:      deadMansSnitchAPISecretKey,
+				Namespace: config.OperatorNamespace,
+			},
+			ClusterDeploymentSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{config.ClusterDeploymentManagedLabel: "true"},
+			},
+			TargetSecretRef: corev1.SecretReference{
+				Name:      "test-secret",
+				Namespace: testNamespace,
+			},
+			SnitchNamePostFix: snitchNamePostFix,
+		},
+	}
+}
 
 // testSyncSet returns a SyncSet for an existing testClusterDeployment to use in testing.
 func testSyncSet() *hivev1.SyncSet {
 	return &hivev1.SyncSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + config.SyncSetPostfix,
+			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
 			Namespace: testNamespace,
 		},
 		Spec: hivev1.SyncSetSpec{
@@ -125,7 +207,7 @@ func testSyncSet() *hivev1.SyncSet {
 func testReferencedSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + config.RefSecretPostfix,
+			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
 			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
@@ -187,29 +269,9 @@ func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	return &cd
 }
 
-// return a ClusterDeployment with Label["noalerts"] == "true"
-func noalertsManagedClusterDeployment() *hivev1.ClusterDeployment {
-	labelMap := map[string]string{
-		config.ClusterDeploymentManagedLabel:  "true",
-		config.ClusterDeploymentNoalertsLabel: "true",
-	}
-	cd := hivev1.ClusterDeployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName,
-			Namespace: testNamespace,
-			Labels:    labelMap,
-		},
-		Spec: hivev1.ClusterDeploymentSpec{
-			ClusterName: testClusterName,
-		},
-	}
-	cd.Spec.Installed = true
-
-	return &cd
-}
-
 func TestReconcileClusterDeployment(t *testing.T) {
 	hiveapis.AddToScheme(scheme.Scheme)
+	dmsapis.AddToScheme(scheme.Scheme)
 	tests := []struct {
 		name             string
 		localObjects     []runtime.Object
@@ -225,14 +287,15 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			localObjects: []runtime.Object{
 				testClusterDeployment(),
 				testSecret(),
+				testDeadMansSnitchIntegration(),
 			},
 			expectedSyncSets: &SyncSetEntry{
-				name:                     testClusterName + config.SyncSetPostfix,
-				referencedSecretName:     testClusterName + config.RefSecretPostfix,
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+				referencedSecretName:     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
 				clusterDeploymentRefName: testClusterName,
 			},
 			expectedSecret: &SecretEntry{
-				name:                     testClusterName + config.RefSecretPostfix,
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
 				snitchURL:                testSnitchURL,
 				clusterDeploymentRefName: testClusterName,
 			},
@@ -246,60 +309,102 @@ func TestReconcileClusterDeployment(t *testing.T) {
 						CheckInURL: testSnitchURL,
 						Status:     "pending",
 					},
-				}, nil).Times(1)
+				}, nil).Times(2)
 				r.CheckIn(gomock.Any()).Return(nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
 			},
 		},
 		{
 			name: "Test Deleting",
 			localObjects: []runtime.Object{
+				testSecret(),
 				deletedClusterDeployment(),
+				testDeadMansSnitchIntegration(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
 			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
 			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
 				r.Delete(gomock.Any()).Return(true, nil).Times(1)
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
 					{Token: testSnitchToken},
 				}, nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
 			},
 		},
 		{
 			name: "Test ClusterDeployment Spec.Installed == false",
 			localObjects: []runtime.Object{
+				testSecret(),
 				uninstalledClusterDeployment(),
+				testDeadMansSnitchIntegration(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
 			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
 			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Times(0)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
 			},
 		},
 		{
 			name: "Test Non managed ClusterDeployment",
 			localObjects: []runtime.Object{
+				testSecret(),
 				nonManagedClusterDeployment(),
+				testDeadMansSnitchIntegration(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
 			expectedSecret:   &SecretEntry{},
 			verifySyncSets:   verifyNoSyncSet,
 			verifySecret:     verifyNoSecret,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Times(0)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
 			},
 		},
 		{
-			name: "Test Create Managed ClusterDeployment with Alerts disabled",
+			name: "Test Empty postfix",
 			localObjects: []runtime.Object{
-				noalertsManagedClusterDeployment(),
+				testClusterDeployment(),
+				testSecret(),
+				testDeadMansSnitchIntegrationEmptyPostfix(),
 			},
-			expectedSyncSets: &SyncSetEntry{},
-			expectedSecret:   &SecretEntry{},
-			verifySyncSets:   verifyNoSyncSet,
-			verifySecret:     verifyNoSecret,
+			expectedSyncSets: &SyncSetEntry{
+				name:                     testClusterName + "-" + config.RefSecretPostfix,
+				referencedSecretName:     testClusterName + "-" + config.RefSecretPostfix,
+				clusterDeploymentRefName: testClusterName,
+			},
+			expectedSecret: &SecretEntry{
+				name:                     testClusterName + "-" + config.RefSecretPostfix,
+				snitchURL:                testSnitchURL,
+				clusterDeploymentRefName: testClusterName,
+			},
+			verifySyncSets: verifySyncSetExists,
+			verifySecret:   verifySecretExists,
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL, Tags: []string{testTag}}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{
+						CheckInURL: testSnitchURL,
+						Status:     "pending",
+					},
+				}, nil).Times(2)
+				r.CheckIn(gomock.Any()).Return(nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
 			},
 		},
 	}
@@ -314,123 +419,66 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			// after mocks is defined
 			defer mocks.mockCtrl.Finish()
 
-			localmetrics.Collector = localmetrics.NewMetricsCollector()
-
-			rdms := &ReconcileDeadMansSnitch{
-				client:    mocks.fakeKubeClient,
-				scheme:    scheme.Scheme,
-				dmsclient: mocks.mockDMSClient,
+			rdms := &ReconcileDeadmansSnitchIntegration{
+				client: mocks.fakeKubeClient,
+				scheme: scheme.Scheme,
+				dmsclient: func(apiKey string, collector *localmetrics.MetricsCollector) dmsclient.Client {
+					return mocks.mockDMSClient
+				},
 			}
 
-			// ACT
-			_, err := rdms.Reconcile(reconcile.Request{
+			// run reconcile multiple times to verify API calls to DMS are minimal
+			_, err1 := rdms.Reconcile(reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      testClusterName,
-					Namespace: testNamespace,
+					Name:      testDeadMansSnitchintegrationName,
+					Namespace: config.OperatorNamespace,
+				},
+			})
+			_, err2 := rdms.Reconcile(reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testDeadMansSnitchintegrationName,
+					Namespace: config.OperatorNamespace,
+				},
+			})
+			_, err3 := rdms.Reconcile(reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testDeadMansSnitchintegrationName,
+					Namespace: config.OperatorNamespace,
 				},
 			})
 
 			// ASSERT
 			//assert.Equal(t, test.expectedGetError, getErr)
 
-			assert.NoError(t, err, "Unexpected Error")
+			assert.NoError(t, err1, "Unexpected Error with Reconcile (1 of 3)")
+			assert.NoError(t, err2, "Unexpected Error with Reconcile (2 of 3)")
+			assert.NoError(t, err3, "Unexpected Error with Reconcile (2 of 3)")
 			assert.True(t, test.verifySyncSets(mocks.fakeKubeClient, test.expectedSyncSets))
 			assert.True(t, test.verifySecret(mocks.fakeKubeClient, test.expectedSecret))
 		})
 	}
 }
 
-func TestRemoveAlertsAfterCreate(t *testing.T) {
-	// test going from having alerts to not having alerts
-	t.Run("Test Managed Cluster that later sets noalerts label", func(t *testing.T) {
-		// ARRANGE
-		mocks := setupDefaultMocks(t, []runtime.Object{
-			testClusterDeployment(),
-			testSecret(),
-			testSyncSet(),
-			testReferencedSecret(),
-			testOtherSyncSet(),
-		})
-		//test.setupDMSMock(mocks.mockDMSClient.EXPECT())
-		setupDMSMock :=
-			func(r *mockdms.MockClientMockRecorder) {
-				r.Delete(gomock.Any()).Return(true, nil).Times(1)
-				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
-					{Token: testSnitchToken},
-				}, nil).Times(1)
-			}
-
-		setupDMSMock(mocks.mockDMSClient.EXPECT())
-
-		// This is necessary for the mocks to report failures like methods not being called an expected number of times.
-		// after mocks is defined
-		defer mocks.mockCtrl.Finish()
-
-		rdms := &ReconcileDeadMansSnitch{
-			client:    mocks.fakeKubeClient,
-			scheme:    scheme.Scheme,
-			dmsclient: mocks.mockDMSClient,
-		}
-
-		// ACT (create)
-		_, err := rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testClusterName,
-				Namespace: testNamespace,
-			},
-		})
-
-		// UPDATE (noalerts)
-		clusterDeployment := &hivev1.ClusterDeployment{}
-		err = mocks.fakeKubeClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: testClusterName}, clusterDeployment)
-		clusterDeployment.Labels[config.ClusterDeploymentNoalertsLabel] = "true"
-		err = mocks.fakeKubeClient.Update(context.TODO(), clusterDeployment)
-
-		// Act (delete) [2x because was seeing other SyncSet's getting deleted]
-		_, err = rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testClusterName,
-				Namespace: testNamespace,
-			},
-		})
-		_, err = rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testClusterName,
-				Namespace: testNamespace,
-			},
-		})
-		_, err = rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testClusterName,
-				Namespace: testNamespace,
-			},
-		})
-		_, err = rdms.Reconcile(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      testClusterName,
-				Namespace: testNamespace,
-			},
-		})
-
-		// ASSERT (no unexpected syncset)
-		assert.NoError(t, err, "Unexpected Error")
-		assert.True(t, verifyNoSyncSet(mocks.fakeKubeClient, &SyncSetEntry{}))
-		assert.True(t, verifyNoSecret(mocks.fakeKubeClient, &SecretEntry{}))
-		// verify the "other" syncset didn't get deleted
-		assert.True(t, verifyOtherSyncSetExists(mocks.fakeKubeClient, &SyncSetEntry{}))
-	})
-}
-
 func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
+	ssl := hivev1.SyncSetList{}
+	err := c.List(context.TODO(), &ssl)
+	if err != nil {
+		return false
+	}
+	for _, s := range ssl.Items {
+		fmt.Printf("syncset %v \n", s)
+	}
+
 	ss := hivev1.SyncSet{}
-	err := c.Get(context.TODO(),
+	err = c.Get(context.TODO(),
 		types.NamespacedName{Name: expected.name, Namespace: testNamespace},
 		&ss)
 
 	if err != nil {
 		return false
 	}
-
+	fmt.Printf("Expected Name%v \n", expected.name)
+	fmt.Printf("SS Name%v \n", ss.Name)
 	if expected.name != ss.Name {
 		return false
 	}
@@ -447,9 +495,18 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 }
 
 func verifySecretExists(c client.Client, expected *SecretEntry) bool {
+	sl := corev1.SecretList{}
+	err := c.List(context.TODO(), &sl)
+	if err != nil {
+		return false
+	}
+	for _, s := range sl.Items {
+		fmt.Printf("secret %v \n", s)
+	}
+
 	secret := corev1.Secret{}
 
-	err := c.Get(context.TODO(),
+	err = c.Get(context.TODO(),
 		types.NamespacedName{Name: expected.name, Namespace: testNamespace},
 		&secret)
 
@@ -503,7 +560,8 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 	}
 
 	for _, secret := range secretList.Items {
-		if secret.Name == testClusterName+config.RefSecretPostfix {
+		fmt.Printf("secret %v \n", secret)
+		if secret.Name == testClusterName+"-"+snitchNamePostFix+"-"+config.RefSecretPostfix {
 			return false
 		}
 	}

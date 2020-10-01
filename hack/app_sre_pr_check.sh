@@ -21,4 +21,4 @@ fi
 BASE_IMG="deadmanssnitch-operator"
 IMG="${BASE_IMG}:latest"
 
-BUILD_CMD="docker build" IMG="$IMG" make docker-build
+IMG="$IMG" make docker-build

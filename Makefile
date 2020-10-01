@@ -19,15 +19,16 @@ DISTRO ?= $(shell if which lsb_release &> /dev/null; then lsb_release -si; else 
 # Image URL to use all building/pushing image targets
 IMG ?= deadmanssnitch-operator:latest
 
-BUILD_CMD ?= docker build
-DOCKER_CMD ?= docker
-
 # Build the docker image
 .PHONY: docker-build
 docker-build:
-	$(BUILD_CMD) -t ${IMG} -f ./build/Dockerfile .
+	$(CONTAINER_ENGINE) build -t ${IMG} -f ./build/Dockerfile .
 
 # Push the docker image
 .PHONY: docker-push
 docker-push:
-	$(DOCKER_CMD) push ${IMG}
+	$(CONTAINER_ENGINE) push ${IMG}
+
+.PHONY: generate
+generate:
+	go generate ./...
