@@ -509,8 +509,8 @@ github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e
 github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e/go.mod h1:M9dusM6U0OOmpKjTacoXquDKPhRPu23PvFA/ws8QML0=
 github.com/openshift/hive v0.0.0-20200210203046-8b1c393442db h1:TpcMH6Gq0LwrcCN1/5TWPakhsWU1oEayGa9nSzGJAc8=
 github.com/openshift/hive v0.0.0-20200210203046-8b1c393442db/go.mod h1:t12kMAMjO4O1dRGOb+uMy3BGNR4zaJSg8KgaOfW/QtI=
-github.com/openshift/operator-custom-metrics v0.3.1-0.20200901174648-463079905232 h1:mzvZSywT+2NqO8V4Ag5TyHKaqNY56m060FPfxWb27VE=
-github.com/openshift/operator-custom-metrics v0.3.1-0.20200901174648-463079905232/go.mod h1:pF8VqYYaJrZo780/ebeMDcaI20ETzJuUSDHGXSzjWwk=
+github.com/openshift/operator-custom-metrics v0.4.0 h1:w+aYf/MIcUqWBzbhxzrJiVBLkA0n5sgRgiZE9aucmiA=
+github.com/openshift/operator-custom-metrics v0.4.0/go.mod h1:pF8VqYYaJrZo780/ebeMDcaI20ETzJuUSDHGXSzjWwk=
 github.com/openshift/origin v0.0.0-20160503220234-8f127d736703/go.mod h1:0Rox5r9C8aQn6j1oAOQ0c1uC86mYbUFObzjBRvUKHII=
 github.com/openshift/prom-label-proxy v0.1.1-0.20191016113035-b8153a7f39f1/go.mod h1:p5MuxzsYP1JPsNGwtjtcgRHHlGziCJJfztff91nNixw=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
