@@ -163,76 +163,6 @@ func testDeadMansSnitchIntegrationEmptyPostfix() *deadmanssnitchv1alpha1.Deadman
 	}
 }
 
-func testDeadMansSnitchIntegrationEmptyTags() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
-	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testDeadMansSnitchintegrationName,
-			Namespace: config.OperatorNamespace,
-		},
-		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
-			DmsAPIKeySecretRef: corev1.SecretReference{
-				Name:      deadMansSnitchAPISecretKey,
-				Namespace: config.OperatorNamespace,
-			},
-			ClusterDeploymentSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{config.ClusterDeploymentManagedLabel: "true"},
-			},
-			TargetSecretRef: corev1.SecretReference{
-				Name:      "test-secret",
-				Namespace: testNamespace,
-			},
-			SnitchNamePostFix: snitchNamePostFix,
-		},
-	}
-}
-
-// testSyncSet returns a SyncSet for an existing testClusterDeployment to use in testing.
-func testSyncSet() *hivev1.SyncSet {
-	return &hivev1.SyncSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
-			Namespace: testNamespace,
-		},
-		Spec: hivev1.SyncSetSpec{
-			ClusterDeploymentRefs: []corev1.LocalObjectReference{
-				{
-					Name: testClusterName,
-				},
-			},
-		},
-	}
-}
-
-// testReferencedSecret returns a Secret for SyncSet to reference
-func testReferencedSecret() *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
-			Namespace: testNamespace,
-		},
-		Data: map[string][]byte{
-			config.KeySnitchURL: []byte(testSnitchURL),
-		},
-	}
-}
-
-// testOtherSyncSet returns a SyncSet that is not for PD for an existing testClusterDeployment to use in testing.
-func testOtherSyncSet() *hivev1.SyncSet {
-	return &hivev1.SyncSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName + testOtherSyncSetPostfix,
-			Namespace: testNamespace,
-		},
-		Spec: hivev1.SyncSetSpec{
-			ClusterDeploymentRefs: []corev1.LocalObjectReference{
-				{
-					Name: testClusterName,
-				},
-			},
-		},
-	}
-}
-
 // return a deleted ClusterDeployment
 func deletedClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
@@ -270,8 +200,10 @@ func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 }
 
 func TestReconcileClusterDeployment(t *testing.T) {
-	hiveapis.AddToScheme(scheme.Scheme)
-	dmsapis.AddToScheme(scheme.Scheme)
+	err := dmsapis.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
+	err = hiveapis.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
 	tests := []struct {
 		name             string
 		localObjects     []runtime.Object
@@ -567,37 +499,4 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 	}
 
 	return true
-}
-
-// verifyOtherSyncSetExists verifies that there is the "other" SyncSet present
-func verifyOtherSyncSetExists(c client.Client, expected *SyncSetEntry) bool {
-	ssList := &hivev1.SyncSetList{}
-	opts := client.ListOptions{Namespace: testNamespace}
-	err := c.List(context.TODO(), ssList, &opts)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// no syncsets are defined, this is bad
-			return false
-		}
-	}
-
-	found := false
-	for _, ss := range ssList.Items {
-		if ss.Name == testClusterName+testOtherSyncSetPostfix {
-			// too bad, found a syncset associated with this operator
-			found = true
-		}
-	}
-
-	return found
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
 }
