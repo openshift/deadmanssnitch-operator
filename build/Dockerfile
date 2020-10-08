@@ -2,7 +2,7 @@ FROM registry.svc.ci.openshift.org/openshift/release:golang-1.13 AS builder
 COPY . /go/src/github.com/openshift/deadmanssnitch-operator
 WORKDIR /go/src/github.com/openshift/deadmanssnitch-operator
 ENV GOFLAGS=""
-RUN make gobuild
+RUN make go-build
 
 FROM registry.svc.ci.openshift.org/openshift/origin-v4.0:base
 ENV OPERATOR_BIN=deadmanssnitch-operator

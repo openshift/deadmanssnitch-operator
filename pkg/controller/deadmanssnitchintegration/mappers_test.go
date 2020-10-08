@@ -34,8 +34,10 @@ import (
 )
 
 func TestClusterDeploymentToDeadMansSnitchIntegrationsMapper(t *testing.T) {
-	deadmanssnitchapis.AddToScheme(scheme.Scheme)
-	hiveapis.AddToScheme(scheme.Scheme)
+	err := deadmanssnitchapis.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
+	err = hiveapis.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
 
 	tests := []struct {
 		name             string

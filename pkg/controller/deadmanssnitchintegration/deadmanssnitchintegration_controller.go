@@ -229,7 +229,7 @@ func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmanssnitc
 	logger := log.WithValues("DeadMansSnitchIntegreation.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", clusterdeployment.Name, "cluster-deployment.Namespace:", clusterdeployment.Namespace)
 	//checking i finalizers exits in the clusterdeployment adding if they dont
 	logger.Info("Checking for finalizers")
-	if utils.HasFinalizer(clusterdeployment, deadMansSnitchFinalizer) == false {
+	if !utils.HasFinalizer(clusterdeployment, deadMansSnitchFinalizer) {
 		log.Info(fmt.Sprint("Adding finalizer to cluster Deployment Name:  ", clusterdeployment.Name+" namespace:"+clusterdeployment.Namespace+" DMSI Name  :"+dmsi.Name))
 		utils.AddFinalizer(clusterdeployment, deadMansSnitchFinalizer)
 		err := r.client.Update(context.TODO(), clusterdeployment)
@@ -242,7 +242,7 @@ func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmanssnitc
 
 	//checking i finalizers exits in the dmsi cr adding if they dont
 	logger.Info("Checking for finalizers")
-	if utils.HasFinalizer(dmsi, deadMansSnitchFinalizer) == false {
+	if !utils.HasFinalizer(dmsi, deadMansSnitchFinalizer) {
 		log.Info(fmt.Sprint("Adding finalizer to DMSI Name: ", " DMSI Name: :"+dmsi.Name))
 		utils.AddFinalizer(dmsi, deadMansSnitchFinalizer)
 		err := r.client.Update(context.TODO(), dmsi)
