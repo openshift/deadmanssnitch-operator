@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	testDeadMansSnitchintegrationName = "testDeadMansSnitchIntegration"
+	testDeadMansSnitchintegrationName = "testdmsi"
 	testClusterName                   = "testClusterName"
 	testNamespace                     = "testNamespace"
 	testSnitchURL                     = "https://deadmanssnitch.com/12345"
@@ -42,7 +42,7 @@ const (
 	testOtherSyncSetPostfix           = "-something-else"
 	snitchNamePostFix                 = "test-postfix"
 	deadMansSnitchTagKey              = "testTag"
-	deadMansSnitchFinalizer           = "dms.managed.openshift.io/deadmanssnitch-" + testDeadMansSnitchintegrationName
+	deadMansSnitchFinalizer           = DeadMansSnitchFinalizerPrefix + testDeadMansSnitchintegrationName
 	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
 	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
 )
@@ -183,20 +183,21 @@ func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 
 // return a ClusterDeployment with Label["managed"] == false
 func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
-	labelMap := map[string]string{config.ClusterDeploymentManagedLabel: "false"}
-	cd := hivev1.ClusterDeployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testClusterName,
-			Namespace: testNamespace,
-			Labels:    labelMap,
-		},
-		Spec: hivev1.ClusterDeploymentSpec{
-			ClusterName: testClusterName,
-		},
-	}
-	cd.Spec.Installed = true
+	cd := testClusterDeployment()
+	cd.ObjectMeta.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
+	cd.ObjectMeta.Finalizers = nil // won't have a finalizer if it is non-managed
 
-	return &cd
+	return cd
+}
+
+// return a deleted ClusterDeployment with Label["managed"] == false, and a DMS finalizer
+func deletedNonManagedClusterDeployment() *hivev1.ClusterDeployment {
+	cd := testClusterDeployment()
+	cd.ObjectMeta.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
+	now := metav1.Now()
+	cd.DeletionTimestamp = &now
+
+	return cd
 }
 
 func TestReconcileClusterDeployment(t *testing.T) {
@@ -307,6 +308,27 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			},
 		},
 		{
+			name: "Test Deleted Non managed ClusterDeployment",
+			localObjects: []runtime.Object{
+				testSecret(),
+				deletedNonManagedClusterDeployment(),
+				testDeadMansSnitchIntegration(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Return(true, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{Token: testSnitchToken},
+				}, nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+			},
+		},
+		{
 			name: "Test Empty postfix",
 			localObjects: []runtime.Object{
 				testClusterDeployment(),
@@ -397,9 +419,6 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	if err != nil {
 		return false
 	}
-	for _, s := range ssl.Items {
-		fmt.Printf("syncset %v \n", s)
-	}
 
 	ss := hivev1.SyncSet{}
 	err = c.Get(context.TODO(),
@@ -409,8 +428,6 @@ func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
 	if err != nil {
 		return false
 	}
-	fmt.Printf("Expected Name%v \n", expected.name)
-	fmt.Printf("SS Name%v \n", ss.Name)
 	if expected.name != ss.Name {
 		return false
 	}
@@ -431,9 +448,6 @@ func verifySecretExists(c client.Client, expected *SecretEntry) bool {
 	err := c.List(context.TODO(), &sl)
 	if err != nil {
 		return false
-	}
-	for _, s := range sl.Items {
-		fmt.Printf("secret %v \n", s)
 	}
 
 	secret := corev1.Secret{}
