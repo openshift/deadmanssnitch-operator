@@ -26,9 +26,11 @@ git clone \
 # remove any versions more recent than deployed hash
 REMOVED_VERSIONS=""
 if [[ "$REMOVE_UNDEPLOYED" == true ]]; then
+    # Can't use the var _OPERATOR_NAME here in the saas file path because app-interface has a typo with deadmanssntich being deadmansnitch.
+    # Until that is fixed hard coding
     DEPLOYED_HASH=$(
-        curl -s "https://gitlab.cee.redhat.com/service/saas-osd-operators/raw/master/${_OPERATOR_NAME}-services/${_OPERATOR_NAME}.yaml" | \
-            docker run --rm -i quay.io/app-sre/yq -r '.services[]|select(.name="${_OPERATOR_NAME}").hash'
+        curl -s 'https://gitlab.cee.redhat.com/service/app-interface/raw/master/data/services/osd-operators/cicd/saas/saas-deadmansnitch-operator.yaml' | \
+            docker run --rm -i quay.io/app-sre/yq yq r - 'resourceTemplates[*].targets(namespace.$ref==/services/osd-operators/namespaces/hivep01ue1/deadmanssnitch-operator.yml).ref'
     )
 
     delete=false
