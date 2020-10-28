@@ -1,4 +1,4 @@
-FROM quay.io/app-sre/boilerplate:image-v0.1.2 AS builder
+FROM quay.io/app-sre/boilerplate:image-v0.2.0 AS builder
 COPY . /go/src/github.com/openshift/deadmanssnitch-operator
 WORKDIR /go/src/github.com/openshift/deadmanssnitch-operator
 ENV GOFLAGS=""
