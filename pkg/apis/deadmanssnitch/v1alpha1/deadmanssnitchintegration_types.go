@@ -37,7 +37,7 @@ type DeadmansSnitchIntegrationStatus struct {
 
 // DeadmansSnitchIntegration is the Schema for the deadmanssnitchintegrations API
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=deadmanssnitchintegrations,scope=Namespaced
+// +kubebuilder:resource:path=deadmanssnitchintegrations,shortName=dmsi,scope=Namespaced
 type DeadmansSnitchIntegration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
