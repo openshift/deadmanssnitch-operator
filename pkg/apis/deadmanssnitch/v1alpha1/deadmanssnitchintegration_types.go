@@ -46,7 +46,6 @@ type DeadmansSnitchIntegration struct {
 	Status DeadmansSnitchIntegrationStatus `json:"status,omitempty"`
 }
 
-//go:generate ../../../../hack/generate.sh
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // DeadmansSnitchIntegrationList contains a list of DeadmansSnitchIntegration
