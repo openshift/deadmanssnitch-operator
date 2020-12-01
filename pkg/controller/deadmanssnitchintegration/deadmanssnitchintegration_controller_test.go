@@ -40,6 +40,7 @@ const (
 	testTag                           = "test"
 	testAPIKey                        = "abc123"
 	testOtherSyncSetPostfix           = "-something-else"
+	testUID							  = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	snitchNamePostFix                 = "test-postfix"
 	deadMansSnitchTagKey              = "testTag"
 	deadMansSnitchFinalizer           = DeadMansSnitchFinalizerPrefix + testDeadMansSnitchintegrationName
@@ -104,6 +105,7 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 			Namespace:  testNamespace,
 			Labels:     labelMap,
 			Finalizers: finalizers,
+			UID: testUID,
 		},
 		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
@@ -190,6 +192,13 @@ func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	return cd
 }
 
+// return a ClusterDeployment with Label["managed"] == false and a DMS finalizer
+func nonManagedDMSClusterDeployment() *hivev1.ClusterDeployment {
+	cd := testClusterDeployment()
+	cd.ObjectMeta.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
+	return cd
+}
+
 // return a deleted ClusterDeployment with Label["managed"] == false, and a DMS finalizer
 func deletedNonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
@@ -214,7 +223,6 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		verifySecret     func(client.Client, *SecretEntry) bool
 		setupDMSMock     func(*mockdms.MockClientMockRecorder)
 	}{
-
 		{
 			name: "Test Creating",
 			localObjects: []runtime.Object{
@@ -305,6 +313,27 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				r.Update(gomock.Any()).Times(0)
 				r.CheckIn(gomock.Any()).Times(0)
 				r.Delete(gomock.Any()).Times(0)
+			},
+		},
+		{
+			name: "Test Non managed ClusterDeployment with DMS",
+			localObjects: []runtime.Object{
+				testSecret(),
+				nonManagedDMSClusterDeployment(),
+				testDeadMansSnitchIntegration(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Return(true, nil).Times(1)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{Token: testSnitchToken},
+				}, nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
 			},
 		},
 		{

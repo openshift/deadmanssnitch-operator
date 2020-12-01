@@ -180,24 +180,30 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	}
 
 	for _, clusterdeployment := range allClusterDeployments.Items {
-		if clusterdeployment.DeletionTimestamp != nil {
+
+		// Check if the cluster matches the requirements for needing DMS setup
+		clusterMatched := false
+		for _, matchingClusterDeployment := range matchingClusterDeployments.Items {
+			if clusterdeployment.UID == matchingClusterDeployment.UID {
+				clusterMatched = true
+				break
+			}
+		}
+
+		if !clusterMatched || clusterdeployment.DeletionTimestamp != nil{
+			// The cluster does not match the criteria for needing DMS setup
 			if utils.HasFinalizer(&clusterdeployment, deadMansSnitchFinalizer) {
+				// The cluster has an existing DMS setup, so remove it
 				err = r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
 			}
-		}
-	}
-
-	for _, clusterdeployment := range matchingClusterDeployments.Items {
-		if clusterdeployment.DeletionTimestamp != nil {
-			// no action required, as this should be handled by the all function above
 			continue
 		}
 
 		if !clusterdeployment.Spec.Installed {
-			// Cluster isn't installed yet, continue
+			// The cluster isn't installed yet, so don't setup DMS yet either
 			continue
 		}
 
@@ -215,6 +221,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+
 		err = r.createSyncset(dmsi, clusterdeployment)
 		if err != nil {
 			return reconcile.Result{}, err
