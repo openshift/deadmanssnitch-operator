@@ -180,11 +180,27 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	}
 
 	for _, clusterdeployment := range allClusterDeployments.Items {
-		if clusterdeployment.DeletionTimestamp != nil {
-			if utils.HasFinalizer(&clusterdeployment, deadMansSnitchFinalizer) {
+		if utils.HasFinalizer(&clusterdeployment, deadMansSnitchFinalizer) {
+			if clusterdeployment.DeletionTimestamp != nil {
 				err = r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
 				if err != nil {
 					return reconcile.Result{}, err
+				}
+			} else {
+				//Check that this clusterdeployment no longer has the matching label (i.e. it was uninstalled)
+				cdIsMatching := false
+				for _, mcd := range matchingClusterDeployments.Items {
+					if clusterdeployment.Namespace == mcd.Namespace && clusterdeployment.Name == mcd.Name {
+						cdIsMatching = true
+						break
+					}
+				}
+				if !cdIsMatching {
+					//this clusterdeployment did not have a matching label, but does have the finalizer, so delete DMS
+					err = r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
 				}
 			}
 		}

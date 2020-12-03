@@ -200,6 +200,14 @@ func deletedNonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	return cd
 }
 
+// return a ClusterDeployment with no label and a finalizer
+func uninstalledAddonClusterDeployment() *hivev1.ClusterDeployment {
+	cd := testClusterDeployment()
+	cd.ObjectMeta.Labels = map[string]string{}
+
+	return cd
+}
+
 func TestReconcileClusterDeployment(t *testing.T) {
 	err := dmsapis.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
@@ -358,6 +366,25 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				}, nil).Times(2)
 				r.CheckIn(gomock.Any()).Return(nil).Times(1)
 				r.Update(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
+			},
+		},
+		{
+			name:             "Test uninstalled addon",
+			localObjects:     []runtime.Object{
+				uninstalledAddonClusterDeployment(),
+				testSecret(),
+				testDeadMansSnitchIntegration(),
+			},
+			expectedSyncSets: nil,
+			expectedSecret:   nil,
+			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
+			setupDMSMock:     func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
 				r.Delete(gomock.Any()).Times(0)
 			},
 		},
