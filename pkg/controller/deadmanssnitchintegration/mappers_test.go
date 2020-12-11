@@ -98,47 +98,6 @@ func TestClusterDeploymentToDeadMansSnitchIntegrationsMapper(t *testing.T) {
 			},
 			expectedRequests: []reconcile.Request{},
 		},
-		{
-			name:   "ownedByClusterDeploymentToDeadMansSnitchIntegrations: matched by 3 DeadManssnitch",
-			mapper: ownedByClusterDeploymentToDeadMansSnitchIntegrations,
-			objects: []runtime.Object{
-				deadMansSnitchIntegration("test1", map[string]string{"test": "test"}),
-				deadMansSnitchIntegration("test2", map[string]string{"test": "test"}),
-				deadMansSnitchIntegration("test3", map[string]string{"test": "test"}),
-				deadMansSnitchIntegration("test4", map[string]string{"notmatching": "test"}),
-				clusterDeployment("cd1", map[string]string{"test": "test"}),
-			},
-			mapObject: handler.MapObject{
-				Meta: &metav1.ObjectMeta{
-					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion: hivev1.SchemeGroupVersion.String(),
-						Kind:       "ClusterDeployment",
-						Name:       "cd1",
-						UID:        types.UID("test"),
-					}},
-				},
-			},
-			expectedRequests: []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Name:      "test1",
-						Namespace: "test",
-					},
-				},
-				{
-					NamespacedName: types.NamespacedName{
-						Name:      "test2",
-						Namespace: "test",
-					},
-				},
-				{
-					NamespacedName: types.NamespacedName{
-						Name:      "test3",
-						Namespace: "test",
-					},
-				},
-			},
-		},
 	}
 
 	for _, test := range tests {
@@ -179,20 +138,6 @@ func deadMansSnitchIntegration(name string, labels map[string]string) *deadmanss
 				Name:      "test",
 				Namespace: "test",
 			},
-		},
-	}
-}
-
-func clusterDeployment(name string, labels map[string]string) *hivev1.ClusterDeployment {
-	return &hivev1.ClusterDeployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "test",
-			Labels:    labels,
-		},
-		Spec: hivev1.ClusterDeploymentSpec{
-			ClusterName: name,
-			Installed:   true,
 		},
 	}
 }
