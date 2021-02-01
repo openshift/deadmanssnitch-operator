@@ -129,11 +129,11 @@ spec:
   dmsAPIKeySecretRef:
     name: deadmanssnitch-api-key
     namespace: deadmanssnitch-operator
-  snitchNamePostFix: ""
+  snitchNamePostFix: "test"
   tags:
   - test
   targetSecretRef:
-    name: dms-secret
+    name: dms-secret-test
     namespace: openshift-monitoring
 ```
 

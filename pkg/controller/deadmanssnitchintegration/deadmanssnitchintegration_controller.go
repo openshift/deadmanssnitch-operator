@@ -288,7 +288,7 @@ func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmanssnitc
 
 // create snitch in deadmanssnitch.com with information retrived from dmsi cr as well as the matching cluster deployment
 func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
-	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cd.Name", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
+	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
 	snitchName := utils.DmsSnitchName(cd.Spec.ClusterName, cd.Spec.BaseDomain, dmsi.Spec.SnitchNamePostFix)
 
 	ssName := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
@@ -340,7 +340,7 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1
 
 //Create secret containing the snitch url
 func (r *ReconcileDeadmansSnitchIntegration) createSecret(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, dmsc dmsclient.Client, cd hivev1.ClusterDeployment) error {
-	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cd.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
+	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
 	dmsSecret := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
 	logger.Info("Checking if secret already exits")
 	err := r.client.Get(context.TODO(),
