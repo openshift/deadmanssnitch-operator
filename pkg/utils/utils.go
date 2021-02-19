@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/openshift/deadmanssnitch-operator/config"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
+	hiveconst "github.com/openshift/hive/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +38,29 @@ func DeleteFinalizer(object metav1.Object, finalizer string) {
 	finalizers := sets.NewString(object.GetFinalizers()...)
 	finalizers.Delete(finalizer)
 	object.SetFinalizers(finalizers.List())
+}
+
+// HasAnnotation checks if the resource has the queired annotations
+func HasAnnotation(object metav1.Object, key string, comparator func(string, string) bool, values ...string) bool {
+	annotations := object.GetAnnotations()
+	if v, ok := annotations[key]; ok {
+		if len(values) == 0 {
+			return true
+		}
+		for _, value := range values {
+			if comparator(v, value) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// IsRelocating indicates that the cluster deployment is being relocating
+func IsRelocating(cd *hivev1.ClusterDeployment) bool {
+	hasAnnotation := HasAnnotation(cd, hiveconst.RelocateAnnotation, strings.HasSuffix, string(hivev1.RelocateOutgoing), string(hivev1.RelocateIncoming))
+
+	return hasAnnotation
 }
 
 // CheckClusterDeployment returns true if the ClusterDeployment is watched by this operator

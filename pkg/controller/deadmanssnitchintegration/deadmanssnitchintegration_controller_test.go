@@ -2,7 +2,6 @@ package deadmanssnitchintegration
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/golang/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,12 +39,15 @@ const (
 	testTag                           = "test"
 	testAPIKey                        = "abc123"
 	testOtherSyncSetPostfix           = "-something-else"
-	testUID							  = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	testUID                           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	snitchNamePostFix                 = "test-postfix"
 	deadMansSnitchTagKey              = "testTag"
-	deadMansSnitchFinalizer           = DeadMansSnitchFinalizerPrefix + testDeadMansSnitchintegrationName
+	deadMansSnitchFinalizer           = deadMansSnitchFinalizerPrefix + testDeadMansSnitchintegrationName
 	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
 	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
+	testRelocateAnnoKey               = "hive.openshift.io/relocate"
+	testRelocateInAnnoValue           = "test/incoming"
+	testRelocateOutAnnoValue          = "test/outgoing"
 )
 
 type SyncSetEntry struct {
@@ -105,7 +107,7 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 			Namespace:  testNamespace,
 			Labels:     labelMap,
 			Finalizers: finalizers,
-			UID: testUID,
+			UID:        testUID,
 		},
 		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
@@ -116,6 +118,27 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 
 	return &cd
 }
+
+// return ClusterDeployment with the relocating-in in progress
+func testClusterDeploymentRelocatingIn() *hivev1.ClusterDeployment {
+	cd := testClusterDeployment()
+	annotations := map[string]string{testRelocateAnnoKey: testRelocateInAnnoValue}
+	cd.Annotations = annotations
+
+	return cd
+}
+
+// return ClusterDeployment with the relocating-out in progress
+func testClusterDeploymentRelocatingOut() *hivev1.ClusterDeployment {
+	cd := testClusterDeployment()
+	annotations := map[string]string{testRelocateAnnoKey: testRelocateOutAnnoValue}
+	cd.Annotations = annotations
+	now := metav1.Now()
+	cd.DeletionTimestamp = &now
+
+	return cd
+}
+
 func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
 
 	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
@@ -209,6 +232,49 @@ func deletedNonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	return cd
 }
 
+// return a Secret contains the SNITCH URL to be comsumed by syncset
+func testRefSecret() *corev1.Secret {
+	refSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+			Namespace: testNamespace,
+		},
+		Data: map[string][]byte{
+			"SNITCH_URL": []byte(testSnitchURL),
+		},
+	}
+	return refSecret
+}
+
+// retrun a SyncSet
+func testSyncSet() *hivev1.SyncSet {
+	ss := &hivev1.SyncSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+			Namespace: testNamespace,
+		},
+		Spec: hivev1.SyncSetSpec{
+			ClusterDeploymentRefs: []corev1.LocalObjectReference{
+				{
+					Name: testClusterName,
+				},
+			},
+			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
+				Secrets: []hivev1.SecretMapping{
+					{
+						SourceRef: hivev1.SecretReference{
+							Namespace: testNamespace,
+							Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return ss
+}
+
 func TestReconcileClusterDeployment(t *testing.T) {
 	err := dmsapis.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
@@ -253,6 +319,54 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				}, nil).Times(2)
 				r.CheckIn(gomock.Any()).Return(nil).Times(1)
 				r.Update(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
+			},
+		},
+		{
+			name: "Test Relocating In",
+			localObjects: []runtime.Object{
+				testClusterDeploymentRelocatingIn(),
+				testSecret(),
+				testDeadMansSnitchIntegration(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Times(0)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
+			},
+		},
+		{
+			name: "Test Relocating Out",
+			localObjects: []runtime.Object{
+				testSecret(),
+				testRefSecret(),
+				testSyncSet(),
+				testDeadMansSnitchIntegration(),
+				testClusterDeploymentRelocatingOut(),
+			},
+			expectedSyncSets: &SyncSetEntry{
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+				referencedSecretName:     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+				clusterDeploymentRefName: testClusterName,
+			},
+			expectedSecret: &SecretEntry{
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+				snitchURL:                testSnitchURL,
+				clusterDeploymentRefName: testClusterName,
+			},
+			verifySyncSets: verifySyncSetExists,
+			verifySecret:   verifySecretExists,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Times(0)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
 				r.Delete(gomock.Any()).Times(0)
 			},
 		},
@@ -535,7 +649,6 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 	}
 
 	for _, secret := range secretList.Items {
-		fmt.Printf("secret %v \n", secret)
 		if secret.Name == testClusterName+"-"+snitchNamePostFix+"-"+config.RefSecretPostfix {
 			return false
 		}
