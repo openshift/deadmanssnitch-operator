@@ -58,7 +58,7 @@ func HasAnnotation(object metav1.Object, key string, comparator func(string, str
 
 // IsRelocating indicates that the cluster deployment is being relocating
 func IsRelocating(cd *hivev1.ClusterDeployment) bool {
-	hasAnnotation := HasAnnotation(cd, hiveconst.RelocateAnnotation, strings.HasSuffix, string(hivev1.RelocateOutgoing), string(hivev1.RelocateIncoming))
+	hasAnnotation := HasAnnotation(cd, hiveconst.RelocateAnnotation, strings.HasSuffix, string(hivev1.RelocateOutgoing), string(hivev1.RelocateIncoming), string(hivev1.RelocateComplete))
 
 	return hasAnnotation
 }
