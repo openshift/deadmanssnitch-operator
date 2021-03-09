@@ -40,12 +40,13 @@ const (
 	testTag                           = "test"
 	testAPIKey                        = "abc123"
 	testOtherSyncSetPostfix           = "-something-else"
-	testUID							  = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	testUID                           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	snitchNamePostFix                 = "test-postfix"
 	deadMansSnitchTagKey              = "testTag"
 	deadMansSnitchFinalizer           = DeadMansSnitchFinalizerPrefix + testDeadMansSnitchintegrationName
 	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
 	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
+	testFakeClusterKey                = "hive.openshift.io/fake-cluster"
 )
 
 type SyncSetEntry struct {
@@ -101,11 +102,12 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 
 	cd := hivev1.ClusterDeployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:       testClusterName,
-			Namespace:  testNamespace,
-			Labels:     labelMap,
-			Finalizers: finalizers,
-			UID: testUID,
+			Name:        testClusterName,
+			Namespace:   testNamespace,
+			Labels:      labelMap,
+			Finalizers:  finalizers,
+			UID:         testUID,
+			Annotations: map[string]string{},
 		},
 		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
@@ -116,6 +118,15 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 
 	return &cd
 }
+
+func testFakeClusterDeployment() *hivev1.ClusterDeployment {
+	cd := testClusterDeployment()
+
+	cd.Annotations[testFakeClusterKey] = "true"
+
+	return cd
+}
+
 func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
 
 	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
@@ -273,6 +284,25 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
 					{Token: testSnitchToken},
 				}, nil).Times(1)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+			},
+		},
+		{
+			name: "Test Fake cluster",
+			localObjects: []runtime.Object{
+				testSecret(),
+				testFakeClusterDeployment(),
+				testDeadMansSnitchIntegration(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
 				r.Update(gomock.Any()).Times(0)
 				r.CheckIn(gomock.Any()).Times(0)
 			},

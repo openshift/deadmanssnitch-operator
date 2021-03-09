@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -18,6 +19,10 @@ import (
 )
 
 var log = logf.Log.WithName("")
+
+const (
+	fakeClusterAnnotation = "hive.openshift.io/fake-cluster"
+)
 
 // HasFinalizer returns true if the given object has the given finalizer
 func HasFinalizer(object metav1.Object, finalizer string) bool {
@@ -82,6 +87,13 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 
 	// made it this far so it's both managed and has alerts enabled
 	return true, clusterDeployment, nil
+}
+
+// IsFakeCluster check if the cluster is fake cluster for testing
+func IsFakeCluster(cd *hivev1.ClusterDeployment) bool {
+	fakeCluster, err := strconv.ParseBool(cd.Annotations[fakeClusterAnnotation])
+
+	return fakeCluster && err == nil
 }
 
 // DeleteSyncSet deletes a SyncSet

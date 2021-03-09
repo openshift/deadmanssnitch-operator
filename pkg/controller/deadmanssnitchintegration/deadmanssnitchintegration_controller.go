@@ -185,14 +185,17 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		clusterMatched := false
 		for _, matchingClusterDeployment := range matchingClusterDeployments.Items {
 			if clusterdeployment.UID == matchingClusterDeployment.UID {
-				clusterMatched = true
-				break
+				// Skip generate the dms for fake clusters
+				if !utils.IsFakeCluster(&clusterdeployment) {
+					clusterMatched = true
+					break
+				}
 			}
 		}
 
 		if !clusterMatched || clusterdeployment.DeletionTimestamp != nil {
 			// The cluster does not match the criteria for needing DMS setup
-			if utils.HasFinalizer(&clusterdeployment, deadMansSnitchFinalizer) {
+			if utils.HasFinalizer(&clusterdeployment, deadMansSnitchFinalizer) && !utils.IsFakeCluster(&clusterdeployment) {
 				// The cluster has an existing DMS setup, so remove it
 				err = r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
 				if err != nil {
