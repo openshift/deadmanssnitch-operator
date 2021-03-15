@@ -16,6 +16,9 @@ type DeadmansSnitchIntegrationSpec struct {
 	//a label selector used to find which clusterdeployment CRs receive a DMS integration based on this configuration
 	ClusterDeploymentSelector metav1.LabelSelector `json:"clusterDeploymentSelector"`
 
+	//a list of annotations the operator to skip
+	ClusterDeploymentAnnotationsToSkip []ClusterDeploymentAnnotationsToSkip `json:"clusterDeploymentAnnotationsToSkip,omitempty"`
+
 	//name and namespace in the target cluster where the secret is synced
 	TargetSecretRef corev1.SecretReference `json:"targetSecretRef"`
 
@@ -53,6 +56,13 @@ type DeadmansSnitchIntegrationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []DeadmansSnitchIntegration `json:"items"`
+}
+
+// ClusterDeploymentAnnotationsToSkip contains a list of annotation keys and values
+// The operator will skip the cluster deployment if it has the same annotations set
+type ClusterDeploymentAnnotationsToSkip struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 func init() {
