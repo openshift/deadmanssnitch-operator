@@ -79,3 +79,6 @@ objects:
       name: dms-secret
       namespace: openshift-monitoring
     tags: ${{DEADMANSSNITCH_OSD_TAGS}}
+    clusterDeploymentAnnotationsToSkip:
+    - name: hive.openshift.io/fake-cluster
+      value: "true"
