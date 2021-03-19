@@ -29,6 +29,20 @@ spec:
         spec:
           description: DeadmansSnitchIntegrationSpec defines the desired state of DeadmansSnitchIntegration
           properties:
+            clusterDeploymentAnnotationsToSkip:
+              description: a list of annotations the operator to skip
+              items:
+                description: ClusterDeploymentAnnotationsToSkip contains a list of annotation keys and values The operator will skip the cluster deployment if it has the same annotations set
+                properties:
+                  name:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - name
+                  - value
+                type: object
+              type: array
             clusterDeploymentSelector:
               description: a label selector used to find which clusterdeployment CRs receive a DMS integration based on this configuration
               properties:
