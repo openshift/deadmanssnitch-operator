@@ -34,7 +34,7 @@ metricDeadMansSnitchHeartbeat: Every 5 minutes, makes a request to the Dead Man'
 
 ## Usage
 
-- Create an account on https://deadmanssnitch.com/ 
+- Create an account on https://deadmanssnitch.com/
 - Choose a plan that allows enhanced snitch intervals(Private eye or above)
 - Create an API key
 - Create the following secret which is required for deadmanssnitch-operator to create snitches
@@ -82,14 +82,11 @@ $ oc new-project deadmanssnitch-operator
 $ oc apply -f deploy/role.yaml
 $ oc apply -f deploy/service_account.yaml
 $ oc apply -f deploy/role_binding.yaml
-$ oc apply -f deploy/prometheus-k8s-role.yaml
-$ oc apply -f deploy/prometheus-k8s-rules.yaml
-$ oc apply -f deploy/prometheus-k8s-rolebinding.yaml
 ```
 
-Create a secret which will contain the DeadMansSnitch API Key and Hive Cluster Tag. 
+Create a secret which will contain the DeadMansSnitch API Key and Hive Cluster Tag.
 
-You will require an API Key signed up to a DeadMansSnitch plan that allows for enhanced snitch intervals (the "Private Eye" plan). You can alternatively test the `deadmanssnitch-oeprator` by signing up to the free tier DeadMansSnitch plan (limited to 1 snitch), but doing so will require you to customize the snitch interval from `15_minute` to `hourly`. This can be performed in [deadmanssnitchintegration_controller.go](pkg/controller/deadmanssnitchintegration/deadmanssnitchintegration_controller.go) 
+You will require an API Key signed up to a DeadMansSnitch plan that allows for enhanced snitch intervals (the "Private Eye" plan). You can alternatively test the `deadmanssnitch-oeprator` by signing up to the free tier DeadMansSnitch plan (limited to 1 snitch), but doing so will require you to customize the snitch interval from `15_minute` to `hourly`. This can be performed in [deadmanssnitchintegration_controller.go](pkg/controller/deadmanssnitchintegration/deadmanssnitchintegration_controller.go)
 
 Adjust the example below and apply the file with `oc apply -f <file>`. Note that the values for `hive-cluster-tag` and `deadmanssnitch-api-key` need to be base64 encoded. This can be performed using `echo -n <text> | base64`.
 
@@ -163,11 +160,11 @@ $ oc apply -f /tmp/fake-clusterdeployment.yaml
 $ oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
 ```
 
-Ensure that the ClusterDeployment is labelled with the label from your `DMSI`'s `clusterDeploymentSelector` clause. 
+Ensure that the ClusterDeployment is labelled with the label from your `DMSI`'s `clusterDeploymentSelector` clause.
 
 Using the example from earlier:
 ```terminal
-$ oc label clusterdeployment -n <namespace> <cdname> api.openshift.com/test=true 
+$ oc label clusterdeployment -n <namespace> <cdname> api.openshift.com/test=true
 ```
 
 ### Delete ClusterDeployment
@@ -178,7 +175,7 @@ To trigger `deadmanssnitch-operator` to remove the service in DeadMansSnitch, yo
 $ oc delete clusterdeployment fake-cluster -n fake-cluster-namespace
 ```
 
-If deleting the `clsuterdeployment`, you may need to remove dangling finalizers from the `clusterdeployment` object.
+If deleting the `clusterdeployment`, you may need to remove dangling finalizers from the `clusterdeployment` object.
 
 ```terminal
 $ oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
