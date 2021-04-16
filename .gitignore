@@ -65,6 +65,7 @@ anaconda-mode/
 # swap
 .sw[a-p]
 .*.sw[a-p]
+*.orig
 # session
 Session.vim
 # temporary
@@ -77,3 +78,8 @@ tags
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 
 .operator-sdk
+
+### Local testing of app-sre pipeline creates these
+.docker/
+Dockerfile.olm-registry
+saas-deadmanssnitch-operator-bundle
