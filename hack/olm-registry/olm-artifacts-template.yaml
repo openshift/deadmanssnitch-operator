@@ -8,10 +8,8 @@ parameters:
   required: true
 - name: CHANNEL
   value: staging
-- name: IMAGE_TAG
-  value: latest
-- name: REPO_DIGEST
-  value: latest
+- name: IMAGE_DIGEST
+  required: true
 - name: SILENT_ALERT_LEGALENTITY_IDS
   value: '["None"]'
 - name: DEADMANSSNITCH_OSD_TAGS
@@ -24,7 +22,7 @@ objects:
     name: deadmanssnitch-operator-catalog
   spec:
     sourceType: grpc
-    image: ${REPO_DIGEST}
+    image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
     displayName: deadmanssnitch-operator Registry
     publisher: SRE 
 
