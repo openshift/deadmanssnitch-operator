@@ -334,7 +334,7 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1
 			notes := fmt.Sprintf(`
 			cluster_id: %s
 			runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md
-			`, cd.Labels["api.openshift.com/id"])
+			`, cd.Spec.ClusterMetadata.ClusterID)
 			newSnitch.Notes = notes
 			logger.Info(fmt.Sprint("Creating snitch:", snitchName))
 			snitch, err = dmsc.Create(newSnitch)
