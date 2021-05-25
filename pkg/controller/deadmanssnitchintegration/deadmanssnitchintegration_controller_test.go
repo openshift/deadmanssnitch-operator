@@ -47,6 +47,7 @@ const (
 	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
 	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
 	testFakeClusterKey                = "hive.openshift.io/fake-cluster"
+	testExternalID                    = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 )
 
 type SyncSetEntry struct {
@@ -112,6 +113,9 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 		Spec: hivev1.ClusterDeploymentSpec{
 			ClusterName: testClusterName,
 			BaseDomain:  "base.domain",
+			ClusterMetadata: &hivev1.ClusterMetadata{
+				ClusterID: testExternalID,
+			},
 		},
 	}
 	cd.Spec.Installed = true
