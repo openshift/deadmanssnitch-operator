@@ -331,11 +331,10 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1
 			snitch = snitches[0]
 		} else {
 			newSnitch := dmsclient.NewSnitch(snitchName, dmsi.Spec.Tags, "15_minute", "basic")
-			notes := fmt.Sprintf(`
-			cluster_id: %s
-			runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md
-			`, cd.Spec.ClusterMetadata.ClusterID)
-			newSnitch.Notes = notes
+			newSnitch.Notes = fmt.Sprintf(`cluster_id: %s
+runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md`, cd.Spec.ClusterMetadata.ClusterID)
+			// add escaping since _ is not being recognized otherwise.
+			newSnitch.Notes = "```" + newSnitch.Notes + "```"
 			logger.Info(fmt.Sprint("Creating snitch:", snitchName))
 			snitch, err = dmsc.Create(newSnitch)
 			if err != nil {
