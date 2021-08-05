@@ -250,18 +250,9 @@ func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *
 	// Check the cluster deployment and skip it if the annotation has the same
 	// key and value
 	if len(dmsi.Spec.ClusterDeploymentAnnotationsToSkip) > 0 {
-		for _, skipper := range dmsi.Spec.ClusterDeploymentAnnotationsToSkip {
-			for _, cd := range matchingClusterDeployments.Items {
-				if len(cd.Annotations) != 0 {
-					for annoKey, annoVal := range cd.GetAnnotations() {
-						if annoKey == skipper.Name && annoVal == skipper.Value {
-							continue
-						}
-						matchedClusterDeployments = append(matchedClusterDeployments, cd)
-					}
-				} else {
-					matchedClusterDeployments = append(matchedClusterDeployments, cd)
-				}
+		for _, cd := range matchingClusterDeployments.Items {
+			if !r.shouldSkipClusterDeployment(dmsi.Spec.ClusterDeploymentAnnotationsToSkip, cd) {
+				matchedClusterDeployments = append(matchedClusterDeployments, cd)
 			}
 		}
 	} else {
@@ -269,6 +260,17 @@ func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *
 	}
 
 	return matchedClusterDeployments, err
+}
+
+func (r *ReconcileDeadmansSnitchIntegration) shouldSkipClusterDeployment(clusterDeploymentAnnotationsToSkip []deadmanssnitchv1alpha1.ClusterDeploymentAnnotationsToSkip, cd hivev1.ClusterDeployment) bool {
+	for annoKey, annoVal := range cd.GetAnnotations() {
+		for _, skipper := range clusterDeploymentAnnotationsToSkip {
+			if annoKey == skipper.Name && annoVal == skipper.Value {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // getAllClusterDeployment retrives all ClusterDeployments in the shard
