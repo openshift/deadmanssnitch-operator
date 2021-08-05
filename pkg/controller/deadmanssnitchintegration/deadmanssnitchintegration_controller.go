@@ -212,22 +212,39 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 			return reconcile.Result{}, err
 		}
 
-		err = r.createSnitch(dmsi, &clusterdeployment, dmsc)
+		secretExist, syncSetExist, err := r.snitchResourcesExist(dmsi, &clusterdeployment)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		clusterIsHibernating := clusterdeployment.Spec.PowerState == hivev1.HibernatingClusterPowerState
 
-		err = r.createSecret(dmsi, dmsc, clusterdeployment)
-		if err != nil {
-			return reconcile.Result{}, err
+		if clusterIsHibernating {
+			if secretExist || syncSetExist {
+				err := r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+			}
+		} else {
+			if !secretExist || !syncSetExist {
+				err = r.createSnitch(dmsi, &clusterdeployment, dmsc)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+
+				err = r.createSecret(dmsi, dmsc, clusterdeployment)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+
+				err = r.createSyncset(dmsi, clusterdeployment)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+			}
 		}
-
-		err = r.createSyncset(dmsi, clusterdeployment)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
 	}
+
 	log.Info("Reconcile of deadmanssnitch integration complete")
 
 	return reconcile.Result{}, nil
@@ -365,6 +382,32 @@ runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_
 
 	logger.Info("Snitch created nothing to do here.... ")
 	return nil
+}
+
+// snitchResourcesExist checks if the associated cluster resources for a snitch exist
+func (r *ReconcileDeadmansSnitchIntegration) snitchResourcesExist(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment) (bool, bool, error) {
+	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
+
+	dmsSecret := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
+	logger.Info("Checking if secret exists")
+	secretExist := false
+	err := r.client.Get(context.TODO(),
+		types.NamespacedName{Name: dmsSecret, Namespace: cd.Namespace},
+		&corev1.Secret{})
+	if err != nil && !errors.IsNotFound(err) {
+		return false, false, err
+	}
+	secretExist = !errors.IsNotFound(err)
+
+	logger.Info("Checking if syncset exists")
+	syncSetExist := false
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: dmsSecret, Namespace: cd.Namespace}, &hivev1.SyncSet{})
+	if err != nil && !errors.IsNotFound(err) {
+		return secretExist, false, err
+	}
+	syncSetExist = !errors.IsNotFound(err)
+
+	return secretExist, syncSetExist, nil
 }
 
 //Create secret containing the snitch url
