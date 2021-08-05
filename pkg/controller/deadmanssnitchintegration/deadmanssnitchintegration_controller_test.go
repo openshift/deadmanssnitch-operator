@@ -242,15 +242,6 @@ func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 	return cd
 }
 
-// return a fake ClusterDeployment
-func fakeClusterDeployment() *hivev1.ClusterDeployment {
-	cd := testClusterDeployment()
-
-	cd.ObjectMeta.Finalizers = nil // won't have a finalizer if it is fake
-
-	return cd
-}
-
 // return a ClusterDeployment with Label["managed"] == false
 func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
