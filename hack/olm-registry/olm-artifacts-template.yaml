@@ -84,3 +84,5 @@ objects:
     clusterDeploymentAnnotationsToSkip:
     - name: hive.openshift.io/fake-cluster
       value: "true"
+    - name: managed.openshift.com/fake
+      value: "true"

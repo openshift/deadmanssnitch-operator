@@ -47,6 +47,7 @@ const (
 	deadMansSnitchOperatorNamespace   = "deadmanssnitch-operator"
 	deadMansSnitchAPISecretName       = "deadmanssnitch-api-key"
 	testFakeClusterKey                = "hive.openshift.io/fake-cluster"
+	testOtherFakeClusterKey           = "managed.openshift.com/fake"
 	testExternalID                    = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 )
 
@@ -131,6 +132,14 @@ func testFakeClusterDeployment() *hivev1.ClusterDeployment {
 	return cd
 }
 
+func testOtherFakeClusterDeployment() *hivev1.ClusterDeployment {
+	cd := testClusterDeployment()
+
+	cd.Annotations[testOtherFakeClusterKey] = "true"
+
+	return cd
+}
+
 func testDeadMansSnitchIntegration() *deadmanssnitchv1alpha1.DeadmansSnitchIntegration {
 
 	return &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
@@ -180,6 +189,10 @@ func testDeadMansSnitchIntegrationWithSkips() *deadmanssnitchv1alpha1.DeadmansSn
 			ClusterDeploymentAnnotationsToSkip: []deadmanssnitchv1alpha1.ClusterDeploymentAnnotationsToSkip{
 				{
 					Name:  testFakeClusterKey,
+					Value: "true",
+				},
+				{
+					Name:  testOtherFakeClusterKey,
 					Value: "true",
 				},
 			},
@@ -442,6 +455,25 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				testSecret(),
 				testDeadMansSnitchIntegrationWithSkips(),
 				testFakeClusterDeployment(),
+			},
+			expectedSyncSets: &SyncSetEntry{},
+			expectedSecret:   &SecretEntry{},
+			verifySyncSets:   verifyNoSyncSet,
+			verifySecret:     verifyNoSecret,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.Create(gomock.Any()).Times(0)
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
+				r.Delete(gomock.Any()).Times(0)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+			},
+		},
+		{
+			name: "Test Skip with Other Fake cluster",
+			localObjects: []runtime.Object{
+				testSecret(),
+				testDeadMansSnitchIntegrationWithSkips(),
+				testOtherFakeClusterDeployment(),
 			},
 			expectedSyncSets: &SyncSetEntry{},
 			expectedSecret:   &SecretEntry{},
