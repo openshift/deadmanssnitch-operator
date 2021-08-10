@@ -95,6 +95,28 @@ func testSecret() *corev1.Secret {
 	return s
 }
 
+// return a syncset that matches the secret found in the hive namespace
+func testSyncSet() *hivev1.SyncSet {
+	ss := &hivev1.SyncSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+			Namespace: testNamespace,
+		},
+	}
+	return ss
+}
+
+// return a secret that matches the secret in syncset secret ref
+func testSecretRef() *corev1.Secret {
+	s := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+			Namespace: testNamespace,
+		},
+	}
+	return s
+}
+
 // return a simple test ClusterDeployment
 
 func testClusterDeployment() *hivev1.ClusterDeployment {
@@ -229,6 +251,14 @@ func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 	return cd
 }
 
+// return a hibernating ClusterDeployment with Spec.PowerState == hivev1.HibernatingClusterPowerState
+func hibernatingClusterDeployment() *hivev1.ClusterDeployment {
+	cd := testClusterDeployment()
+	cd.Spec.PowerState = hivev1.HibernatingClusterPowerState
+
+	return cd
+}
+
 // return a ClusterDeployment with Label["managed"] == false
 func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
@@ -337,6 +367,39 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
 				r.Create(gomock.Any()).Times(0)
 				r.FindSnitchesByName(gomock.Any()).Times(0)
+				r.Update(gomock.Any()).Times(0)
+				r.CheckIn(gomock.Any()).Times(0)
+				r.Delete(gomock.Any()).Times(0)
+			},
+		},
+		{
+			name: "Test Hibernation",
+			localObjects: []runtime.Object{
+				hibernatingClusterDeployment(),
+				testSecret(),
+				testSecretRef(),
+				testSyncSet(),
+				testDeadMansSnitchIntegration(),
+			},
+			expectedSyncSets: &SyncSetEntry{
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+				referencedSecretName:     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+				clusterDeploymentRefName: testClusterName,
+			},
+			expectedSecret: &SecretEntry{
+				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
+				snitchURL:                testSnitchURL,
+				clusterDeploymentRefName: testClusterName,
+			},
+			verifySyncSets: verifyNoSyncSet,
+			verifySecret:   verifyNoSecret,
+			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
+				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
+					{Token: testSnitchToken},
+				}, nil).Times(1)
+				r.Delete(gomock.Any()).Return(true, nil).Times(1)
+
+				r.Create(gomock.Any()).Times(0)
 				r.Update(gomock.Any()).Times(0)
 				r.CheckIn(gomock.Any()).Times(0)
 				r.Delete(gomock.Any()).Times(0)
