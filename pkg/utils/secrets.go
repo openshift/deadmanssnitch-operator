@@ -2,7 +2,7 @@ package utils
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,8 +24,8 @@ func LoadSecretData(c client.Client, secretName, namespace, dataKey string) (str
 	return string(retStr), nil
 }
 
-// GetHashOfPullSecret returns md5 sum of a string
+// GetHashOfPullSecret returns the SHA224 checksum of a string
 func GetHashOfPullSecret(data string) string {
 	bData := []byte(data)
-	return fmt.Sprintf("%x", md5.Sum(bData))
+	return fmt.Sprintf("%x", sha256.Sum224(bData))
 }
