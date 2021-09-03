@@ -216,9 +216,9 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		clusterIsHibernating := clusterdeployment.Spec.PowerState == hivev1.HibernatingClusterPowerState
+		specIsHibernating := clusterdeployment.Spec.PowerState == hivev1.HibernatingClusterPowerState
 
-		if clusterIsHibernating {
+		if specIsHibernating {
 			if secretExist || syncSetExist {
 				err := r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
 				if err != nil {
@@ -226,20 +226,22 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 				}
 			}
 		} else {
-			if !secretExist || !syncSetExist {
-				err = r.createSnitch(dmsi, &clusterdeployment, dmsc)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
+			if instancesAreRunning(clusterdeployment) {
+				if !secretExist || !syncSetExist {
+					err = r.createSnitch(dmsi, &clusterdeployment, dmsc)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
 
-				err = r.createSecret(dmsi, dmsc, clusterdeployment)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
+					err = r.createSecret(dmsi, dmsc, clusterdeployment)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
 
-				err = r.createSyncset(dmsi, clusterdeployment)
-				if err != nil {
-					return reconcile.Result{}, err
+					err = r.createSyncset(dmsi, clusterdeployment)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
 				}
 			}
 		}
@@ -584,4 +586,18 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 
 	return nil
 
+}
+
+func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
+	hibernatingCondition := getCondition(cd.Status.Conditions, hivev1.ClusterHibernatingCondition)
+	return hibernatingCondition != nil && hibernatingCondition.Status == corev1.ConditionFalse && hibernatingCondition.Reason == hivev1.RunningHibernationReason
+}
+
+func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.ClusterDeploymentConditionType) *hivev1.ClusterDeploymentCondition {
+	for _, condition := range conditions {
+		if condition.Type == t {
+			return &condition
+		}
+	}
+	return nil
 }
