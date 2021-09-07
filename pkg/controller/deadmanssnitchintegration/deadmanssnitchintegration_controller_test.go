@@ -142,6 +142,13 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 		},
 	}
 	cd.Spec.Installed = true
+	cd.Status.Conditions = []hivev1.ClusterDeploymentCondition{
+		{
+			Type:   hivev1.ClusterHibernatingCondition,
+			Status: corev1.ConditionFalse,
+			Reason: hivev1.RunningHibernationReason,
+		},
+	}
 
 	return &cd
 }
@@ -268,6 +275,13 @@ func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 func hibernatingClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
 	cd.Spec.PowerState = hivev1.HibernatingClusterPowerState
+	cd.Status.Conditions = []hivev1.ClusterDeploymentCondition{
+		{
+			Type:   hivev1.ClusterHibernatingCondition,
+			Status: corev1.ConditionTrue,
+			Reason: hivev1.HibernatingHibernationReason,
+		},
+	}
 
 	return cd
 }
