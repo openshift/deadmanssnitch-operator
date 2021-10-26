@@ -3,6 +3,12 @@ package deadmanssnitchintegration
 import (
 	"context"
 	"fmt"
+	"reflect"
+
+	cloudtrailclient "github.com/aws/aws-sdk-go/service/cloudtrail"
+	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 
 	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
@@ -227,6 +233,38 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 			}
 		} else {
 			if clusterIsNotHibernating(clusterdeployment) {
+				// try to stop CHGM noise from AWS
+				if clusterdeployment.Spec.Platform.AWS != nil {
+					// FIXME - we need a real AWS EC2 client here
+					type placeholder struct {
+						ec2iface.EC2API
+					}
+					aws := placeholder{}
+
+					running, err := clusterMasterInstancesRunning(clusterdeployment, aws)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+
+					// FIXME - we need a real AWS cloudtrail client here
+					type placeholderCT struct {
+						cloudtrailiface.CloudTrailAPI
+					}
+					ct := placeholderCT{}
+					if !running {
+						sbc, err := clusterMasterInstancesStoppedByCustomer(clusterdeployment, ct)
+						if err != nil {
+							return reconcile.Result{}, err
+						}
+						if sbc {
+							// send service log entry if possible
+							err := r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
+							if err != nil {
+								return reconcile.Result{}, err
+							}
+						}
+					}
+				}
 				if !secretExist || !syncSetExist {
 					err = r.createSnitch(dmsi, &clusterdeployment, dmsc)
 					if err != nil {
@@ -600,4 +638,61 @@ func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.Clust
 		}
 	}
 	return nil
+}
+
+func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2iface.EC2API) (bool, error) {
+	clusterTagKey := "key"
+	clusterTagValue := fmt.Sprintf("kubernetes.io/cluster/%s-*", cd.ObjectMeta.Name)
+	resourceTypeName := "resource-type"
+	resourceTypeValue := "instance"
+	tagsOutput, err := ec2Client.DescribeTags(&ec2.DescribeTagsInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   &clusterTagKey,
+				Values: []*string{&clusterTagValue},
+			},
+			{
+				Name:   &resourceTypeName,
+				Values: []*string{&resourceTypeValue},
+			},
+		},
+	})
+	if err != nil {
+		return false, err
+	}
+	clusterTag := tagsOutput.Tags[0].Key
+
+	ownedValue := "owned"
+	nameName := "Name"
+	nameValue := "*master-*"
+	instancesOutput, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   clusterTag,
+				Values: []*string{&ownedValue},
+			},
+			{
+				Name:   &nameName,
+				Values: []*string{&nameValue},
+			},
+		},
+	})
+
+	anyRunning := false
+	runningState := "running"
+	for _, r := range instancesOutput.Reservations {
+		for _, instance := range r.Instances {
+			if reflect.DeepEqual(instance.State.Name, &runningState) {
+				anyRunning = true
+			}
+		}
+	}
+
+	return anyRunning, nil
+}
+
+func clusterMasterInstancesStoppedByCustomer(cd hivev1.ClusterDeployment, ctc cloudtrailiface.CloudTrailAPI) (bool, error) {
+	// --lookup-attributes AttributeKey=ResourceName,AttributeValue=${INSTANCE_ID}
+	ctc.LookupEvents(&cloudtrailclient.LookupEventsInput{})
+	return false, nil
 }

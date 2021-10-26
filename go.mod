@@ -3,6 +3,7 @@ module github.com/openshift/deadmanssnitch-operator
 go 1.13
 
 require (
+	github.com/aws/aws-sdk-go v1.32.3
 	github.com/go-logr/logr v0.2.1
 	github.com/golang/mock v1.4.4
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
