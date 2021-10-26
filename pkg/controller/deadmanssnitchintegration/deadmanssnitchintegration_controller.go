@@ -226,7 +226,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 				}
 			}
 		} else {
-			if instancesAreRunning(clusterdeployment) {
+			if clusterIsNotHibernating(clusterdeployment) {
 				if !secretExist || !syncSetExist {
 					err = r.createSnitch(dmsi, &clusterdeployment, dmsc)
 					if err != nil {
@@ -588,7 +588,7 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 
 }
 
-func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
+func clusterIsNotHibernating(cd hivev1.ClusterDeployment) bool {
 	hibernatingCondition := getCondition(cd.Status.Conditions, hivev1.ClusterHibernatingCondition)
 	return hibernatingCondition != nil && hibernatingCondition.Status == corev1.ConditionFalse && hibernatingCondition.Reason == hivev1.RunningHibernationReason
 }
