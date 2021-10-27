@@ -241,7 +241,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 					}
 					aws := placeholder{}
 
-					running, err := clusterMasterInstancesRunning(clusterdeployment, aws)
+					running, masterInstanceIDs, err := clusterMasterInstancesRunning(clusterdeployment, aws)
 					if err != nil {
 						return reconcile.Result{}, err
 					}
@@ -640,7 +640,9 @@ func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.Clust
 	return nil
 }
 
-func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2iface.EC2API) (bool, error) {
+func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2iface.EC2API) (bool, []*string, error) {
+	instanceIDs := []*string{}
+
 	clusterTagKey := "key"
 	clusterTagValue := fmt.Sprintf("kubernetes.io/cluster/%s-*", cd.ObjectMeta.Name)
 	resourceTypeName := "resource-type"
@@ -658,7 +660,7 @@ func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2ifa
 		},
 	})
 	if err != nil {
-		return false, err
+		return false, instanceIDs, err
 	}
 	clusterTag := tagsOutput.Tags[0].Key
 
@@ -682,13 +684,14 @@ func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2ifa
 	runningState := "running"
 	for _, r := range instancesOutput.Reservations {
 		for _, instance := range r.Instances {
+			instanceIDs = append(instanceIDs, instance.InstanceId)
 			if reflect.DeepEqual(instance.State.Name, &runningState) {
 				anyRunning = true
 			}
 		}
 	}
 
-	return anyRunning, nil
+	return anyRunning, instanceIDs, nil
 }
 
 func clusterMasterInstancesStoppedByCustomer(cd hivev1.ClusterDeployment, ctc cloudtrailiface.CloudTrailAPI) (bool, error) {

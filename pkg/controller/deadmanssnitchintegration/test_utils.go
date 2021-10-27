@@ -6,11 +6,14 @@ import (
 )
 
 type mockEC2 struct {
+	instanceState *string
 	ec2iface.EC2API
 }
 
-func NewMockEC2() *mockEC2 {
-	return &mockEC2{}
+func NewMockEC2(instanceState string) *mockEC2 {
+	return &mockEC2{
+		instanceState: &instanceState,
+	}
 }
 
 func (c *mockEC2) DescribeTags(input *ec2.DescribeTagsInput) (*ec2.DescribeTagsOutput, error) {
@@ -28,14 +31,15 @@ func (c *mockEC2) DescribeTags(input *ec2.DescribeTagsInput) (*ec2.DescribeTagsO
 }
 
 func (c *mockEC2) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
-	name := "running"
+	instanceId := "i-abcdefgh"
 	dio := &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
 			{
 				Instances: []*ec2.Instance{
 					{
+						InstanceId: &instanceId,
 						State: &ec2.InstanceState{
-							Name: &name,
+							Name: c.instanceState,
 						},
 					},
 				},

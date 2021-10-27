@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
@@ -681,9 +682,65 @@ func TestReconcileClusterDeployment(t *testing.T) {
 }
 
 func TestClusterMasterInstancesRunning(t *testing.T) {
-	b, err := clusterMasterInstancesRunning(*testClusterDeployment(), NewMockEC2())
-	assert.NoError(t, err, "bad error")
-	assert.True(t, b)
+	tests := []struct {
+		Name                string
+		ClusterDeployment   hivev1.ClusterDeployment
+		EC2Client           ec2iface.EC2API
+		ExpectedResult      bool
+		ExpectedInstanceIDs []string
+	}{
+		{
+			Name:                "returns true if instances are running",
+			ClusterDeployment:   *testClusterDeployment(),
+			EC2Client:           NewMockEC2("running"),
+			ExpectedResult:      true,
+			ExpectedInstanceIDs: []string{"i-abcdefgh"},
+		},
+		{
+			Name:                "returns false if instances are stopping",
+			ClusterDeployment:   *testClusterDeployment(),
+			EC2Client:           NewMockEC2("stopping"),
+			ExpectedResult:      false,
+			ExpectedInstanceIDs: []string{"i-abcdefgh"},
+		},
+		{
+			Name:                "returns false if instances are stopped",
+			ClusterDeployment:   *testClusterDeployment(),
+			EC2Client:           NewMockEC2("stopped"),
+			ExpectedResult:      false,
+			ExpectedInstanceIDs: []string{"i-abcdefgh"},
+		},
+		{
+			Name:                "returns false if instances are terminating",
+			ClusterDeployment:   *testClusterDeployment(),
+			EC2Client:           NewMockEC2("terminating"),
+			ExpectedResult:      false,
+			ExpectedInstanceIDs: []string{"i-abcdefgh"},
+		},
+		{
+			Name:                "returns false if instances are terminated",
+			ClusterDeployment:   *testClusterDeployment(),
+			EC2Client:           NewMockEC2("terminated"),
+			ExpectedResult:      false,
+			ExpectedInstanceIDs: []string{"i-abcdefgh"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			b, iidps, err := clusterMasterInstancesRunning(test.ClusterDeployment, test.EC2Client)
+			instanceIDs := []string{}
+			for _, p := range iidps {
+				instanceIDs = append(instanceIDs, *p)
+			}
+
+			assert.NoError(t, err, "unexpected error")
+			for _, i := range test.ExpectedInstanceIDs {
+				assert.Contains(t, instanceIDs, i)
+			}
+			assert.Equal(t, test.ExpectedResult, b)
+		})
+	}
 }
 
 func verifySyncSetExists(c client.Client, expected *SyncSetEntry) bool {
