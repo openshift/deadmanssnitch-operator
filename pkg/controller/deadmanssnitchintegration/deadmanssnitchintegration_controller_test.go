@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -738,6 +739,37 @@ func TestClusterMasterInstancesRunning(t *testing.T) {
 			for _, i := range test.ExpectedInstanceIDs {
 				assert.Contains(t, instanceIDs, i)
 			}
+			assert.Equal(t, test.ExpectedResult, b)
+		})
+	}
+}
+
+func TestClusterInstancesStoppedByCustomer(t *testing.T) {
+	tests := []struct {
+		Name              string
+		ClusterDeployment hivev1.ClusterDeployment
+		CTClient          cloudtrailiface.CloudTrailAPI
+		ExpectedResult    bool
+	}{
+		{
+			Name:              "returns true when StopInstances event wasn't caused by SRE-*",
+			ClusterDeployment: *testClusterDeployment(),
+			CTClient:          NewMockCT("StopInstances", "not-an-sre"),
+			ExpectedResult:    true,
+		},
+		{
+			Name:              "returns false when StopInstances event was caused by SRE-*",
+			ClusterDeployment: *testClusterDeployment(),
+			CTClient:          NewMockCT("StopInstances", "SRE-fakeuser"),
+			ExpectedResult:    false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			instanceID := "whatever"
+			b, err := clusterInstancesStoppedByCustomer(test.ClusterDeployment, []*string{&instanceID}, test.CTClient)
+			assert.NoError(t, err, "unexpected error")
 			assert.Equal(t, test.ExpectedResult, b)
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	cloudtrailclient "github.com/aws/aws-sdk-go/service/cloudtrail"
 	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
@@ -38,6 +39,7 @@ var log = logf.Log.WithName("controller_deadmanssnitchintegration")
 const (
 	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
 	DeadMansSnitchFinalizerPrefix = "dms.managed.openshift.io/deadmanssnitch-"
+	SREUsernamePrefix             = "SRE-"
 )
 
 // Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -252,12 +254,12 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 					}
 					ct := placeholderCT{}
 					if !running {
-						sbc, err := clusterMasterInstancesStoppedByCustomer(clusterdeployment, ct)
+						sbc, err := clusterInstancesStoppedByCustomer(clusterdeployment, masterInstanceIDs, ct)
 						if err != nil {
 							return reconcile.Result{}, err
 						}
 						if sbc {
-							// send service log entry if possible
+							// TODO send service log entry if possible
 							err := r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
 							if err != nil {
 								return reconcile.Result{}, err
@@ -694,8 +696,34 @@ func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2ifa
 	return anyRunning, instanceIDs, nil
 }
 
-func clusterMasterInstancesStoppedByCustomer(cd hivev1.ClusterDeployment, ctc cloudtrailiface.CloudTrailAPI) (bool, error) {
-	// --lookup-attributes AttributeKey=ResourceName,AttributeValue=${INSTANCE_ID}
-	ctc.LookupEvents(&cloudtrailclient.LookupEventsInput{})
-	return false, nil
+func clusterInstancesStoppedByCustomer(cd hivev1.ClusterDeployment, ids []*string, ctc cloudtrailiface.CloudTrailAPI) (bool, error) {
+	resourceName := "ResourceName"
+
+	r, err := ctc.LookupEvents(&cloudtrailclient.LookupEventsInput{
+		LookupAttributes: []*cloudtrailclient.LookupAttribute{
+			{
+				AttributeKey:   &resourceName,
+				AttributeValue: ids[0],
+			},
+		},
+	})
+	if err != nil {
+		return true, err
+	}
+
+	customerDidIt := false
+	for _, event := range r.Events {
+		notRunning := false
+		if *event.EventName == "StopInstances" {
+			notRunning = true
+		}
+
+		if notRunning {
+			if !strings.HasPrefix(*event.Username, SREUsernamePrefix) {
+				customerDidIt = true
+			}
+		}
+	}
+
+	return customerDidIt, nil
 }

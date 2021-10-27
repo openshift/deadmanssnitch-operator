@@ -1,6 +1,8 @@
 package deadmanssnitchintegration
 
 import (
+	"github.com/aws/aws-sdk-go/service/cloudtrail"
+	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 )
@@ -47,4 +49,29 @@ func (c *mockEC2) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.Des
 		},
 	}
 	return dio, nil
+}
+
+type mockCT struct {
+	eventName     *string
+	eventUsername *string
+	cloudtrailiface.CloudTrailAPI
+}
+
+func NewMockCT(eventName string, eventUsername string) *mockCT {
+	return &mockCT{
+		eventName:     &eventName,
+		eventUsername: &eventUsername,
+	}
+}
+
+func (c *mockCT) LookupEvents(input *cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsOutput, error) {
+	leo := &cloudtrail.LookupEventsOutput{
+		Events: []*cloudtrail.Event{
+			{
+				EventName: c.eventName,
+				Username:  c.eventUsername,
+			},
+		},
+	}
+	return leo, nil
 }
