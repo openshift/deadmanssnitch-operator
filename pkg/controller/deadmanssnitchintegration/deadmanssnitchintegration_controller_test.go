@@ -3,32 +3,30 @@ package deadmanssnitchintegration
 import (
 	"context"
 	"fmt"
-
-	"github.com/golang/mock/gomock"
-	"k8s.io/apimachinery/pkg/api/errors"
-
-	dmsapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
-	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
-	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
-	corev1 "k8s.io/api/core/v1"
-	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/openshift/deadmanssnitch-operator/config"
+	dmsapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
+	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	mockdms "github.com/openshift/deadmanssnitch-operator/pkg/dmsclient/mock"
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 
 	hiveapis "github.com/openshift/hive/pkg/apis"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
-	"github.com/stretchr/testify/assert"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
