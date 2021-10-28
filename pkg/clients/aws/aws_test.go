@@ -3,7 +3,6 @@ package aws
 import (
 	"testing"
 
-	"github.com/openshift/deadmanssnitch-operator/config"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,7 +50,7 @@ var testHiveClusterDeploymentName = "test-cluster"
 
 var awsSecret = &v1.Secret{
 	ObjectMeta: metav1.ObjectMeta{
-		Namespace: config.OperatorNamespace,
+		Namespace: testHiveNamespace,
 		Name:      testHiveAWSSecretName,
 	},
 	Data: map[string][]byte{

@@ -209,7 +209,7 @@ func NewClient(reqLogger logr.Logger, kubeClient client.Client, clusterDeploymen
 		err := kubeClient.Get(context.TODO(),
 			types.NamespacedName{
 				Name:      secretName,
-				Namespace: config.OperatorNamespace,
+				Namespace: clusterDeployment.Namespace,
 			},
 			secret)
 
