@@ -138,6 +138,7 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 			BaseDomain:  "base.domain",
 			ClusterMetadata: &hivev1.ClusterMetadata{
 				ClusterID: testExternalID,
+				InfraID:   fmt.Sprintf("%s-1234", testClusterName),
 			},
 		},
 	}

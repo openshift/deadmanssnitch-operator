@@ -34,6 +34,8 @@ func (c *mockEC2) DescribeTags(input *ec2.DescribeTagsInput) (*ec2.DescribeTagsO
 
 func (c *mockEC2) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	instanceId := "i-abcdefgh"
+	tagKey := "Name"
+	tagValue := "testClusterName-1234-master-whatever"
 	dio := &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
 			{
@@ -42,6 +44,12 @@ func (c *mockEC2) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.Des
 						InstanceId: &instanceId,
 						State: &ec2.InstanceState{
 							Name: c.instanceState,
+						},
+						Tags: []*ec2.Tag{
+							{
+								Key:   &tagKey,
+								Value: &tagValue,
+							},
 						},
 					},
 				},

@@ -663,28 +663,27 @@ func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2ifa
 	clusterTag := tagsOutput.Tags[0].Key
 
 	ownedValue := "owned"
-	nameName := "Name"
-	nameValue := fmt.Sprintf("%s-master-", cd.Spec.ClusterMetadata.InfraID)
 	instancesOutput, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
 		Filters: []*ec2.Filter{
 			{
 				Name:   clusterTag,
 				Values: []*string{&ownedValue},
 			},
-			{
-				Name:   &nameName,
-				Values: []*string{&nameValue},
-			},
 		},
 	})
 
 	anyRunning := false
 	runningState := "running"
+	masterNameValue := fmt.Sprintf("%s-master-", cd.Spec.ClusterMetadata.InfraID)
 	for _, r := range instancesOutput.Reservations {
 		for _, instance := range r.Instances {
-			instanceIDs = append(instanceIDs, instance.InstanceId)
-			if reflect.DeepEqual(instance.State.Name, &runningState) {
-				anyRunning = true
+			for _, tag := range instance.Tags {
+				if *tag.Key == "Name" && strings.HasPrefix(*tag.Value, masterNameValue) {
+					instanceIDs = append(instanceIDs, instance.InstanceId)
+					if reflect.DeepEqual(instance.State.Name, &runningState) {
+						anyRunning = true
+					}
+				}
 			}
 		}
 	}
