@@ -597,39 +597,6 @@ func TestReconcileClusterDeployment(t *testing.T) {
 				r.Delete(gomock.Any()).Times(0)
 			},
 		},
-		{
-			name: "Test Pause customer stopped instances",
-			localObjects: []runtime.Object{
-				testClusterDeployment(),
-				testSecret(),
-				testSecretRef(),
-				testSyncSet(),
-				testDeadMansSnitchIntegration(),
-			},
-			expectedSyncSets: &SyncSetEntry{
-				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
-				referencedSecretName:     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
-				clusterDeploymentRefName: testClusterName,
-			},
-			expectedSecret: &SecretEntry{
-				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
-				snitchURL:                testSnitchURL,
-				clusterDeploymentRefName: testClusterName,
-			},
-			verifySyncSets: verifyNoSyncSet,
-			verifySecret:   verifyNoSecret,
-			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
-				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
-					{Token: testSnitchToken},
-				}, nil).Times(1)
-				r.Delete(gomock.Any()).Return(true, nil).Times(1)
-
-				r.Create(gomock.Any()).Times(0)
-				r.Update(gomock.Any()).Times(0)
-				r.CheckIn(gomock.Any()).Times(0)
-				r.Delete(gomock.Any()).Times(0)
-			},
-		},
 	}
 
 	for _, test := range tests {
