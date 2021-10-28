@@ -239,7 +239,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 			if clusterIsNotHibernating(clusterdeployment) {
 				// try to stop CHGM noise from AWS
 				if clusterdeployment.Spec.Platform.AWS != nil {
-					ec2Client, ctClient, err := dmsAws.NewClient(reqLogger, r.client, deadmanssnitchAwsSecretName, request.Namespace, clusterdeployment.Spec.Platform.AWS.Region, clusterdeployment.Name)
+					ec2Client, ctClient, err := dmsAws.NewClient(reqLogger, r.client, &clusterdeployment, deadmanssnitchAwsSecretName, clusterdeployment.Spec.Platform.AWS.Region)
 					if err != nil {
 						return reconcile.Result{}, err
 					}

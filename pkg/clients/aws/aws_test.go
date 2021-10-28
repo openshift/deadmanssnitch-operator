@@ -3,6 +3,7 @@ package aws
 import (
 	"testing"
 
+	"github.com/openshift/deadmanssnitch-operator/config"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +21,7 @@ func TestNewClient(t *testing.T) {
 		testClient := setUpEmptyTestClient(t)
 		reqLogger := log.WithValues("Request.Namespace", testHiveNamespace, "Request.Name", testHiveCertificateRequestName)
 
-		_, _, actual := NewClient(reqLogger, testClient, testHiveAWSSecretName, testHiveNamespace, testHiveAWSRegion, testHiveClusterDeploymentName)
+		_, _, actual := NewClient(reqLogger, testClient, testClusterDeployment, testHiveAWSSecretName, testHiveAWSRegion)
 
 		if actual == nil {
 			t.Error("expected an error when attempting to get missing account secret")
@@ -31,7 +32,7 @@ func TestNewClient(t *testing.T) {
 		testClient := setUpTestClient(t)
 		reqLogger := log.WithValues("Request.Namespace", testHiveNamespace, "Request.Name", testHiveCertificateRequestName)
 
-		_, _, err := NewClient(reqLogger, testClient, testHiveAWSSecretName, testHiveNamespace, testHiveAWSRegion, testHiveClusterDeploymentName)
+		_, _, err := NewClient(reqLogger, testClient, testClusterDeployment, testHiveAWSSecretName, testHiveAWSRegion)
 
 		if err != nil {
 			t.Errorf("unexpected error when creating the client: %q", err)
@@ -50,7 +51,7 @@ var testHiveClusterDeploymentName = "test-cluster"
 
 var awsSecret = &v1.Secret{
 	ObjectMeta: metav1.ObjectMeta{
-		Namespace: testHiveNamespace,
+		Namespace: config.OperatorNamespace,
 		Name:      testHiveAWSSecretName,
 	},
 	Data: map[string][]byte{

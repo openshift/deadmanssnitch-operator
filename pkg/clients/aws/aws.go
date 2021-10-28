@@ -56,7 +56,7 @@ type ctClient struct {
 // AWS credentials are returned as these secrets and a new session is initiated prior to returning
 // a client. If secrets fail to return, the IAM role of the masters is used to create a
 // new session for the client.
-func NewClient(reqLogger logr.Logger, kubeClient client.Client, secretName, namespace, region, clusterDeploymentName string) (*ec2Client, *ctClient, error) {
+func NewClient(reqLogger logr.Logger, kubeClient client.Client, clusterDeployment *hivev1.ClusterDeployment, secretName, region string) (*ec2Client, *ctClient, error) {
 	awsConfig := &aws.Config{
 		Region: aws.String(region),
 		// MaxRetries to limit the number of attempts on failed API calls
@@ -70,15 +70,6 @@ func NewClient(reqLogger logr.Logger, kubeClient client.Client, secretName, name
 		},
 	}
 
-	// Check if ClusterDeployment is labelled for STS
-	clusterDeployment := &hivev1.ClusterDeployment{}
-	err := kubeClient.Get(context.TODO(), types.NamespacedName{
-		Name:      clusterDeploymentName,
-		Namespace: namespace,
-	}, clusterDeployment)
-	if err != nil {
-		return nil, nil, err
-	}
 	if stsEnabled, ok := clusterDeployment.Labels[clusterDeploymentSTSLabel]; ok && stsEnabled == "true" {
 		// Get STS jump role from from aws-account-operator ConfigMap
 		cm := &corev1.ConfigMap{}
@@ -163,8 +154,8 @@ func NewClient(reqLogger logr.Logger, kubeClient client.Client, secretName, name
 		// Get Account's STS role from AccountClaim
 		accountClaim := &aaov1alpha1.AccountClaim{}
 		err = kubeClient.Get(context.TODO(), types.NamespacedName{
-			Name:      clusterDeploymentName,
-			Namespace: namespace,
+			Name:      clusterDeployment.Name,
+			Namespace: clusterDeployment.Namespace,
 		}, accountClaim)
 		if err != nil {
 			return nil, nil, err
@@ -218,7 +209,7 @@ func NewClient(reqLogger logr.Logger, kubeClient client.Client, secretName, name
 		err := kubeClient.Get(context.TODO(),
 			types.NamespacedName{
 				Name:      secretName,
-				Namespace: namespace,
+				Namespace: config.OperatorNamespace,
 			},
 			secret)
 
