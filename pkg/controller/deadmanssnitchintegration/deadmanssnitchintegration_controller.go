@@ -664,7 +664,7 @@ func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2ifa
 
 	ownedValue := "owned"
 	nameName := "Name"
-	nameValue := "*master-*"
+	nameValue := fmt.Sprintf("%s-master-", cd.Spec.ClusterMetadata.InfraID)
 	instancesOutput, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
 		Filters: []*ec2.Filter{
 			{
