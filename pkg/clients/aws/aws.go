@@ -30,7 +30,7 @@ import (
 const (
 	awsCredsSecretIDKey         = "aws_access_key_id"
 	awsCredsSecretAccessKey     = "aws_secret_access_key"
-	awsCredsSecretName          = "deadmanssnitch-operator-aws-credentials" // FIXME - needs to be implemented
+	awsCredsSecretName          = "deadmanssnitch-operator-aws-credentials"
 	resourceRecordTTL           = 60
 	clientMaxRetries            = 25
 	retryerMaxRetries           = 10

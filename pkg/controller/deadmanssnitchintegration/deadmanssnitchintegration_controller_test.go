@@ -719,15 +719,15 @@ func TestClusterInstancesStoppedByCustomer(t *testing.T) {
 		ExpectedResult    bool
 	}{
 		{
-			Name:              "returns true when StopInstances event wasn't caused by SRE-*",
+			Name:              "returns true when StopInstances event wasn't caused by RH-SRE-*",
 			ClusterDeployment: *testClusterDeployment(),
 			CTClient:          NewMockCT("StopInstances", "not-an-sre"),
 			ExpectedResult:    true,
 		},
 		{
-			Name:              "returns false when StopInstances event was caused by SRE-*",
+			Name:              "returns false when StopInstances event was caused by RH-SRE-*",
 			ClusterDeployment: *testClusterDeployment(),
-			CTClient:          NewMockCT("StopInstances", "SRE-fakeuser"),
+			CTClient:          NewMockCT("StopInstances", "RH-SRE-fakeuser"),
 			ExpectedResult:    false,
 		},
 	}

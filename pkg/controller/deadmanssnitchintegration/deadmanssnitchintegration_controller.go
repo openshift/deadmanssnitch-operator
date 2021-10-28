@@ -40,7 +40,7 @@ var log = logf.Log.WithName("controller_deadmanssnitchintegration")
 const (
 	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
 	DeadMansSnitchFinalizerPrefix = "dms.managed.openshift.io/deadmanssnitch-"
-	SREUsernamePrefix             = "SRE-"
+	SREUsernamePrefix             = "RH-SRE-"
 	deadmanssnitchAwsSecretName   = "deadmanssnitch-operator-aws-credentials"
 )
 
