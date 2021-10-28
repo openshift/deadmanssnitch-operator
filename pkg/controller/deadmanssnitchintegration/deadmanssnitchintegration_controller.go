@@ -13,6 +13,7 @@ import (
 
 	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
+	dmsAws "github.com/openshift/deadmanssnitch-operator/pkg/clients/aws"
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
@@ -40,6 +41,7 @@ const (
 	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
 	DeadMansSnitchFinalizerPrefix = "dms.managed.openshift.io/deadmanssnitch-"
 	SREUsernamePrefix             = "SRE-"
+	deadmanssnitchAwsSecretName   = "deadmanssnitch-operator-aws-credentials"
 )
 
 // Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -237,24 +239,18 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 			if clusterIsNotHibernating(clusterdeployment) {
 				// try to stop CHGM noise from AWS
 				if clusterdeployment.Spec.Platform.AWS != nil {
-					// FIXME - we need a real AWS EC2 client here
-					type placeholder struct {
-						ec2iface.EC2API
-					}
-					aws := placeholder{}
-
-					running, masterInstanceIDs, err := clusterMasterInstancesRunning(clusterdeployment, aws)
+					ec2Client, ctClient, err := dmsAws.NewClient(reqLogger, r.client, deadmanssnitchAwsSecretName, request.Namespace, clusterdeployment.Spec.Platform.AWS.Region, clusterdeployment.Name)
 					if err != nil {
 						return reconcile.Result{}, err
 					}
 
-					// FIXME - we need a real AWS cloudtrail client here
-					type placeholderCT struct {
-						cloudtrailiface.CloudTrailAPI
+					running, masterInstanceIDs, err := clusterMasterInstancesRunning(clusterdeployment, ec2Client.Client)
+					if err != nil {
+						return reconcile.Result{}, err
 					}
-					ct := placeholderCT{}
+
 					if !running {
-						sbc, err := clusterInstancesStoppedByCustomer(clusterdeployment, masterInstanceIDs, ct)
+						sbc, err := clusterInstancesStoppedByCustomer(clusterdeployment, masterInstanceIDs, ctClient.Client)
 						if err != nil {
 							return reconcile.Result{}, err
 						}

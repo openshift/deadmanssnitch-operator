@@ -7,6 +7,7 @@ require (
 	github.com/go-logr/logr v0.2.1
 	github.com/golang/mock v1.4.4
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
+	github.com/openshift/aws-account-operator/pkg/apis v0.0.0-20211027091555-4321e264625d // indirect
 	github.com/openshift/hive v1.0.16-0.20201211144432-f97557354336
 	github.com/openshift/operator-custom-metrics v0.3.1-0.20200901174648-463079905232
 	github.com/operator-framework/operator-sdk v0.17.2

@@ -1187,6 +1187,8 @@ github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible/go.mo
 github.com/openshift/api v3.9.1-0.20190517100836-d5b34b957e91+incompatible/go.mod h1:dh9o4Fs58gpFXGSYfnVxGR9PnV53I8TW84pQaJDdGiY=
 github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible h1:AvJ2SgJ7ekSlEL/wyeVMffxDkbKohp4JLge9wMtT23o=
 github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible/go.mod h1:dh9o4Fs58gpFXGSYfnVxGR9PnV53I8TW84pQaJDdGiY=
+github.com/openshift/aws-account-operator/pkg/apis v0.0.0-20211027091555-4321e264625d h1:aukNZwoKqW8H5YZx6Jwz3n7Rp0r4yqaahThAX1MG+UY=
+github.com/openshift/aws-account-operator/pkg/apis v0.0.0-20211027091555-4321e264625d/go.mod h1:cLnYI1elYBw8yiSJMkJtYP7CWnG8N3yB26XM3SnDYtA=
 github.com/openshift/baremetal-operator v0.0.0-20200715132148-0f91f62a41fe/go.mod h1:DOgBIuBcXuTD8uub0jL7h6gBdIBt3CFrwz6K2FtfMBA=
 github.com/openshift/build-machinery-go v0.0.0-20200211121458-5e3d6e570160/go.mod h1:1CkcsT3aVebzRBzVTSbiKSkJMsC/CASqxesfqEMfJEc=
 github.com/openshift/build-machinery-go v0.0.0-20200819073603-48aa266c95f7/go.mod h1:b1BuldmJlbA/xYtdZvKi+7j5YGB44qJUJDZ9zwiNCfE=
@@ -2285,6 +2287,7 @@ k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30/go.mod h1:BXM9ceUBTj2QnfH
 k8s.io/kube-openapi v0.0.0-20190320154901-5e45bb682580/go.mod h1:BXM9ceUBTj2QnfH2MK1odQs778ajze1RxcmP6S8RVVc=
 k8s.io/kube-openapi v0.0.0-20190709113604-33be087ad058/go.mod h1:nfDlWeOsu3pUf4yWGL+ERqohP4YsZcBJXWMK+gkzOA4=
 k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf/go.mod h1:1TqjTSzOxsLGIKfj0lK8EeCP7K1iUG65v09OM0/WG5E=
+k8s.io/kube-openapi v0.0.0-20190918143330-0270cf2f1c1d/go.mod h1:1TqjTSzOxsLGIKfj0lK8EeCP7K1iUG65v09OM0/WG5E=
 k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a/go.mod h1:1TqjTSzOxsLGIKfj0lK8EeCP7K1iUG65v09OM0/WG5E=
 k8s.io/kube-openapi v0.0.0-20200121204235-bf4fb3bd569c/go.mod h1:GRQhZsXIAJ1xR0C9bd8UpWHZ5plfAS9fzPjJuQ6JL3E=
 k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6/go.mod h1:GRQhZsXIAJ1xR0C9bd8UpWHZ5plfAS9fzPjJuQ6JL3E=
