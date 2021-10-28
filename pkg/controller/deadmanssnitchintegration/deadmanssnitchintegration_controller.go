@@ -642,7 +642,7 @@ func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2ifa
 	instanceIDs := []*string{}
 
 	clusterTagKey := "key"
-	clusterTagValue := fmt.Sprintf("kubernetes.io/cluster/%s-*", cd.ObjectMeta.Name)
+	clusterTagValue := fmt.Sprintf("kubernetes.io/cluster/%s", cd.Spec.ClusterMetadata.InfraID)
 	resourceTypeName := "resource-type"
 	resourceTypeValue := "instance"
 	tagsOutput, err := ec2Client.DescribeTags(&ec2.DescribeTagsInput{
