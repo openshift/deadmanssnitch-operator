@@ -669,21 +669,19 @@ func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2ifa
 				Name:   clusterTag,
 				Values: []*string{&ownedValue},
 			},
+			{
+				Name:   aws.String("Name"),
+				Values: []*string{aws.String(fmt.Sprintf("%s-master-", cd.Spec.ClusterMetadata.InfraID))},
+			},
 		},
 	})
 
 	anyRunning := false
-	runningState := "running"
-	masterNameValue := fmt.Sprintf("%s-master-", cd.Spec.ClusterMetadata.InfraID)
 	for _, r := range instancesOutput.Reservations {
 		for _, instance := range r.Instances {
-			for _, tag := range instance.Tags {
-				if *tag.Key == "Name" && strings.HasPrefix(*tag.Value, masterNameValue) {
-					instanceIDs = append(instanceIDs, instance.InstanceId)
-					if reflect.DeepEqual(instance.State.Name, &runningState) {
-						anyRunning = true
-					}
-				}
+			instanceIDs = append(instanceIDs, instance.InstanceId)
+			if *instance.State.Name == "running" {
+				anyRunning = true
 			}
 		}
 	}
