@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/golang/mock/gomock"
@@ -735,8 +736,7 @@ func TestClusterInstancesStoppedByCustomer(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			instanceID := "whatever"
-			b, err := clusterInstancesStoppedByCustomer(test.ClusterDeployment, []*string{&instanceID}, test.CTClient)
+			b, err := clusterInstancesStoppedByCustomer(test.ClusterDeployment, []*string{aws.String("whatever")}, test.CTClient)
 			assert.NoError(t, err, "unexpected error")
 			assert.Equal(t, test.ExpectedResult, b)
 		})

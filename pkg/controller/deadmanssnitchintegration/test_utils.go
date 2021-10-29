@@ -1,6 +1,7 @@
 package deadmanssnitchintegration
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudtrail"
 	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -19,13 +20,11 @@ func NewMockEC2(instanceState string) *mockEC2 {
 }
 
 func (c *mockEC2) DescribeTags(input *ec2.DescribeTagsInput) (*ec2.DescribeTagsOutput, error) {
-	key := "test1"
-	value := "test2"
 	dto := &ec2.DescribeTagsOutput{
 		Tags: []*ec2.TagDescription{
 			{
-				Key:   &key,
-				Value: &value,
+				Key:   aws.String("test1"),
+				Value: aws.String("test2"),
 			},
 		},
 	}
@@ -33,22 +32,19 @@ func (c *mockEC2) DescribeTags(input *ec2.DescribeTagsInput) (*ec2.DescribeTagsO
 }
 
 func (c *mockEC2) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
-	instanceId := "i-abcdefgh"
-	tagKey := "Name"
-	tagValue := "testClusterName-1234-master-whatever"
 	dio := &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: &instanceId,
+						InstanceId: aws.String("i-abcdefgh"),
 						State: &ec2.InstanceState{
 							Name: c.instanceState,
 						},
 						Tags: []*ec2.Tag{
 							{
-								Key:   &tagKey,
-								Value: &tagValue,
+								Key:   aws.String("Name"),
+								Value: aws.String("testClusterName-1234-master-whatever"),
 							},
 						},
 					},

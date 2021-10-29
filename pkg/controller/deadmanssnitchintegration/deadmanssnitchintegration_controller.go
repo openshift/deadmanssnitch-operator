@@ -3,9 +3,9 @@ package deadmanssnitchintegration
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
 	cloudtrailclient "github.com/aws/aws-sdk-go/service/cloudtrail"
 	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -641,19 +641,15 @@ func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.Clust
 func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2iface.EC2API) (bool, []*string, error) {
 	instanceIDs := []*string{}
 
-	clusterTagKey := "key"
-	clusterTagValue := fmt.Sprintf("kubernetes.io/cluster/%s", cd.Spec.ClusterMetadata.InfraID)
-	resourceTypeName := "resource-type"
-	resourceTypeValue := "instance"
 	tagsOutput, err := ec2Client.DescribeTags(&ec2.DescribeTagsInput{
 		Filters: []*ec2.Filter{
 			{
-				Name:   &clusterTagKey,
-				Values: []*string{&clusterTagValue},
+				Name:   aws.String("key"),
+				Values: []*string{aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", cd.Spec.ClusterMetadata.InfraID))},
 			},
 			{
-				Name:   &resourceTypeName,
-				Values: []*string{&resourceTypeValue},
+				Name:   aws.String("resource-type"),
+				Values: []*string{aws.String("instance")},
 			},
 		},
 	})
@@ -662,12 +658,11 @@ func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2ifa
 	}
 	clusterTag := tagsOutput.Tags[0].Key
 
-	ownedValue := "owned"
 	instancesOutput, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
 		Filters: []*ec2.Filter{
 			{
 				Name:   clusterTag,
-				Values: []*string{&ownedValue},
+				Values: []*string{aws.String("owned")},
 			},
 			{
 				Name:   aws.String("Name"),
