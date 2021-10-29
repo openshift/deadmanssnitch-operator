@@ -256,10 +256,10 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 						}
 						if sbc {
 							// TODO send service log entry if possible
+							// NB this block will be reached every time until the instances come back
 							err := r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
-							if err != nil {
-								return reconcile.Result{}, err
-							}
+							// return either way, so a new snitch doesn't get set right back up
+							return reconcile.Result{}, err
 						}
 					}
 				}
