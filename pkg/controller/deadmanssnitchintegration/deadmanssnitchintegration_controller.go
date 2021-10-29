@@ -239,6 +239,17 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 			if clusterIsNotHibernating(clusterdeployment) {
 				// try to stop CHGM noise from AWS
 				if clusterdeployment.Spec.Platform.AWS != nil {
+					snitchName := utils.DmsSnitchName(clusterdeployment.Spec.ClusterName, clusterdeployment.Spec.BaseDomain, dmsi.Spec.SnitchNamePostFix)
+					snitch, err := dmsc.FindSnitchesByName(snitchName)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+
+					// skip if there's already no snitch
+					if len(snitch) == 0 {
+						return reconcile.Result{}, err
+					}
+
 					ec2Client, ctClient, err := dmsAws.NewClient(reqLogger, r.client, &clusterdeployment, clusterdeployment.Spec.Platform.AWS.CredentialsSecretRef.Name, clusterdeployment.Spec.Platform.AWS.Region)
 					if err != nil {
 						return reconcile.Result{}, err
@@ -256,9 +267,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 						}
 						if sbc {
 							// TODO send service log entry if possible
-							// NB this block will be reached every time until the instances come back
 							err := r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
-							// return either way, so a new snitch doesn't get set right back up
 							return reconcile.Result{}, err
 						}
 					}
