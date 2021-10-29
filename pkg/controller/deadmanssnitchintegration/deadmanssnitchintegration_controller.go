@@ -249,7 +249,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 						return reconcile.Result{}, err
 					}
 
-					if !running {
+					if !running && len(masterInstanceIDs) > 0 {
 						sbc, err := clusterInstancesStoppedByCustomer(clusterdeployment, masterInstanceIDs, ctClient.Client)
 						if err != nil {
 							return reconcile.Result{}, err
@@ -641,35 +641,21 @@ func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.Clust
 func clusterMasterInstancesRunning(cd hivev1.ClusterDeployment, ec2Client ec2iface.EC2API) (bool, []*string, error) {
 	instanceIDs := []*string{}
 
-	tagsOutput, err := ec2Client.DescribeTags(&ec2.DescribeTagsInput{
+	instancesOutput, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
 		Filters: []*ec2.Filter{
 			{
-				Name:   aws.String("key"),
-				Values: []*string{aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", cd.Spec.ClusterMetadata.InfraID))},
+				Name:   aws.String(fmt.Sprintf("tag:kubernetes.io/cluster/%s", cd.Spec.ClusterMetadata.InfraID)),
+				Values: []*string{aws.String("owned")},
 			},
 			{
-				Name:   aws.String("resource-type"),
-				Values: []*string{aws.String("instance")},
+				Name:   aws.String("tag:Name"),
+				Values: []*string{aws.String(fmt.Sprintf("%s-master-*", cd.Spec.ClusterMetadata.InfraID))},
 			},
 		},
 	})
 	if err != nil {
 		return false, instanceIDs, err
 	}
-	clusterTag := tagsOutput.Tags[0].Key
-
-	instancesOutput, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   clusterTag,
-				Values: []*string{aws.String("owned")},
-			},
-			{
-				Name:   aws.String("Name"),
-				Values: []*string{aws.String(fmt.Sprintf("%s-master-", cd.Spec.ClusterMetadata.InfraID))},
-			},
-		},
-	})
 
 	anyRunning := false
 	for _, r := range instancesOutput.Reservations {
