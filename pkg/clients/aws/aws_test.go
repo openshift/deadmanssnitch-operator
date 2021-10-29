@@ -42,8 +42,6 @@ func TestNewClient(t *testing.T) {
 // helpers
 var testHiveNamespace = "uhc-doesntexist-123456"
 var testHiveCertificateRequestName = "clustername-1313-0-primary-cert-bundle"
-var testHiveCertSecretName = "primary-cert-bundle-secret"
-var testHiveACMEDomain = "not.a.valid.tld"
 var testHiveAWSSecretName = "aws"
 var testHiveAWSRegion = "not-relevant-1"
 var testHiveClusterDeploymentName = "test-cluster"

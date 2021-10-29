@@ -41,7 +41,6 @@ const (
 	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
 	DeadMansSnitchFinalizerPrefix = "dms.managed.openshift.io/deadmanssnitch-"
 	SREUsernamePrefix             = "RH-SRE-"
-	deadmanssnitchAwsSecretName   = "deadmanssnitch-operator-aws-credentials"
 )
 
 // Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller
