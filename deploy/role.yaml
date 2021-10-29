@@ -5,6 +5,13 @@ metadata:
   name: deadmanssnitch-operator
 rules:
 - apiGroups:
+  - aws.managed.openshift.io/v1alpha1
+  resources:
+  - accountclaims
+  verbs:
+  - get
+  - list
+- apiGroups:
   - ""
   resources:
   - pods
