@@ -36,3 +36,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "deadmanssnitch-operator"
+            - name: FEDRAMP
+              value: "false"

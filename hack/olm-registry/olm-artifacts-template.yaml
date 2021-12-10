@@ -16,6 +16,8 @@ parameters:
   value: '["None"]'
 - name: DEADMANSSNITCH_OSD_TAGS
   required: true
+- name: FEDRAMP
+  value: "false"
 
 objects:
 - apiVersion: operators.coreos.com/v1alpha1
@@ -45,6 +47,10 @@ objects:
     name: deadmanssnitch-operator
     source: deadmanssnitch-operator-catalog
     sourceNamespace: deadmanssnitch-operator
+  config:
+    env:
+    - name: FEDRAMP
+      value: "${FEDRAMP}"
 
 - apiVersion: deadmanssnitch.managed.openshift.io/v1alpha1
   kind: DeadmansSnitchIntegration
