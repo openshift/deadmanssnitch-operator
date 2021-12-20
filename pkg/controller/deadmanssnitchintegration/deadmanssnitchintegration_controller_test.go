@@ -19,8 +19,8 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	mockdms "github.com/openshift/deadmanssnitch-operator/pkg/dmsclient/mock"
 
-	hiveapis "github.com/openshift/hive/pkg/apis"
-	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
+	hiveapis "github.com/openshift/hive/apis"
+	hivev1 "github.com/openshift/hive/apis/hive/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -146,7 +146,7 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 		{
 			Type:   hivev1.ClusterHibernatingCondition,
 			Status: corev1.ConditionFalse,
-			Reason: hivev1.RunningHibernationReason,
+			Reason: hivev1.ResumingOrRunningHibernationReason,
 		},
 	}
 
