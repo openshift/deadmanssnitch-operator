@@ -600,7 +600,32 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 
 func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
 	hibernatingCondition := getCondition(cd.Status.Conditions, hivev1.ClusterHibernatingCondition)
-	return hibernatingCondition != nil && hibernatingCondition.Status == corev1.ConditionFalse && hibernatingCondition.Reason == hivev1.RunningHibernationReason
+
+	// verify the ClusterDeployment has a hibernation condition
+	if hibernatingCondition == nil {
+		return false
+	}
+
+	// verify the hibernatingCondition is not active (ConditionTrue and ConditionUnknown are discarded)
+	if hibernatingCondition.Status != corev1.ConditionFalse {
+		return false
+	}
+
+	return validHibernationReason(hibernatingCondition.Reason)
+}
+
+func validHibernationReason(lookup string) bool {
+	validHibernationReasons := []string{
+		hivev1.ResumingHibernationReason,
+		hivev1.ResumingOrRunningHibernationReason,
+		hivev1.RunningHibernationReason,
+	}
+	for _, val := range validHibernationReasons {
+		if val == lookup {
+			return true
+		}
+	}
+	return false
 }
 
 func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.ClusterDeploymentConditionType) *hivev1.ClusterDeploymentCondition {
