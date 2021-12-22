@@ -10,7 +10,7 @@ import (
 	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
-	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
+	hivev1 "github.com/openshift/hive/apis/hive/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -401,7 +401,7 @@ runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_
 // snitchResourcesExist checks if the associated cluster resources for a snitch exist
 func (r *ReconcileDeadmansSnitchIntegration) snitchResourcesExist(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment) (bool, bool, error) {
 	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
-
+	logger.Info("Checking for snitch resources")
 	dmsSecret := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
 	logger.Info("Checking if secret exists")
 	secretExist := false
@@ -432,6 +432,12 @@ func (r *ReconcileDeadmansSnitchIntegration) createSecret(dmsi *deadmanssnitchv1
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{Name: dmsSecret, Namespace: cd.Namespace},
 		&corev1.Secret{})
+
+	if err != nil && !errors.IsNotFound(err) {
+		logger.Error(err, "Failed to fetch secret")
+		return err
+	}
+
 	if errors.IsNotFound(err) {
 		logger.Info("Secret not found creating secret")
 		snitchName := utils.DmsSnitchName(cd.Spec.ClusterName, cd.Spec.BaseDomain, dmsi.Spec.SnitchNamePostFix)
@@ -457,7 +463,7 @@ func (r *ReconcileDeadmansSnitchIntegration) createSecret(dmsi *deadmanssnitchv1
 
 		}
 	}
-	logger.Info("Secret created , nothing to do here...")
+	logger.Info("Secret created, nothing to do here...")
 	return nil
 }
 
@@ -600,7 +606,9 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 
 func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
 	hibernatingCondition := getCondition(cd.Status.Conditions, hivev1.ClusterHibernatingCondition)
-	return hibernatingCondition != nil && hibernatingCondition.Status == corev1.ConditionFalse && hibernatingCondition.Reason == hivev1.RunningHibernationReason
+	readyCondition := getCondition(cd.Status.Conditions, hivev1.ClusterReadyCondition)
+
+	return (hibernatingCondition != nil && hibernatingCondition.Status == corev1.ConditionFalse && hibernatingCondition.Reason == hivev1.ResumingOrRunningHibernationReason) || (readyCondition != nil && readyCondition.Status == corev1.ConditionTrue)
 }
 
 func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.ClusterDeploymentConditionType) *hivev1.ClusterDeploymentCondition {
