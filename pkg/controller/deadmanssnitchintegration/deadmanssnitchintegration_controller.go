@@ -130,7 +130,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	if len(os.Getenv("FEDRAMP")) == 0 {
 		reqLogger.Info("FEDRAMP environment variable unset, defaulting to false")
 	} else {
-		reqLogger.Info("running in FedRAMP environment: %b", fedramp)
+		reqLogger.Info(fmt.Sprintf("running in FedRAMP environment: %t", fedramp))
 	}
 
 	// Fetch the DeadmansSnitchIntegration dmsi
