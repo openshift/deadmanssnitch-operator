@@ -35,7 +35,19 @@ var fedramp = os.Getenv("FEDRAMP") == "true"
 const (
 	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
 	DeadMansSnitchFinalizerPrefix = "dms.managed.openshift.io/deadmanssnitch-"
+	// These can be removed once Hive is promoted past f73ed3e in all environments
+	// Support for these conditions was removed in https://github.com/openshift/hive/pull/1604
+	legacyHivev1RunningHibernationReason  = "Running"
+	legacyHivev1ResumingHibernationReason = "Resuming"
 )
+
+var validHibernationReasons = []string{
+	hivev1.ResumingOrRunningHibernationReason,
+	// These can be removed once Hive is promoted past f73ed3e in all environments
+	// Support for these conditions was removed in https://github.com/openshift/hive/pull/1604
+	legacyHivev1ResumingHibernationReason,
+	legacyHivev1RunningHibernationReason,
+}
 
 // Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -606,9 +618,27 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 
 func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
 	hibernatingCondition := getCondition(cd.Status.Conditions, hivev1.ClusterHibernatingCondition)
-	readyCondition := getCondition(cd.Status.Conditions, hivev1.ClusterReadyCondition)
 
-	return (hibernatingCondition != nil && hibernatingCondition.Status == corev1.ConditionFalse && hibernatingCondition.Reason == hivev1.ResumingOrRunningHibernationReason) || (readyCondition != nil && readyCondition.Status == corev1.ConditionTrue)
+	// verify the ClusterDeployment has a hibernation condition
+	if hibernatingCondition == nil {
+		return false
+	}
+
+	// verify the hibernatingCondition is not active (ConditionTrue and ConditionUnknown are discarded)
+	if hibernatingCondition.Status != corev1.ConditionFalse {
+		return false
+	}
+
+	return validHibernationReason(hibernatingCondition.Reason)
+}
+
+func validHibernationReason(lookup string) bool {
+	for _, val := range validHibernationReasons {
+		if val == lookup {
+			return true
+		}
+	}
+	return false
 }
 
 func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.ClusterDeploymentConditionType) *hivev1.ClusterDeploymentCondition {
