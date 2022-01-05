@@ -52,6 +52,7 @@ data:
 ```
 
 - Build a docker image and replace `REPLACE_IMAGE` [operator.yaml](deploy/operator.yaml) field with that image
+  - you can do that using `oc create -f https://github.com/openshift/deadmanssnitch-operator/raw/master/deploy/operator.yaml --dry-run=client -oyaml | oc set image --local -f - --dry-run=client -oyaml *=REPLACE_IMAGE`
 - Deploy using `oc apply -f deploy/`
 
 ## Development
