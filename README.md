@@ -57,6 +57,10 @@ data:
 
 ## Development
 
+<details>
+  <summary> how to develop this locally</summary>
+    <p>
+
 ### Set up local OpenShift cluster
 
 Methods include:
@@ -181,3 +185,6 @@ If deleting the `clusterdeployment`, you may need to remove dangling finalizers 
 ```terminal
 $ oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
 ```
+
+</p>
+</details>
