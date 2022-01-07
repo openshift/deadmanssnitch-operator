@@ -40,13 +40,6 @@ const (
 	legacyHivev1RunningHibernationReason = "Running"
 )
 
-var validHibernationReasons = []string{
-	hivev1.ResumingOrRunningHibernationReason,
-	// This can be removed once Hive is promoted past f73ed3e in all environments
-	// Support for this condition was removed in https://github.com/openshift/hive/pull/1604
-	legacyHivev1RunningHibernationReason,
-}
-
 // Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -619,7 +612,7 @@ func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
 	// ie. The cluster is not "Resuming" if the PowerState is "Running", the cluster is operational.
 	// If the field is blank we move on and check the legacy reasons (It may be blank if the running version of
 	// Hive on cluster doesn't yet support it)
-	if cd.Status.PowerState != "" && cd.Status.PowerState == "Running" {
+	if cd.Status.PowerState == "Running" {
 		return true
 	}
 
@@ -638,16 +631,7 @@ func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
 	}
 
 	// Check legacy Hibernation condition reasons
-	return validHibernationReason(hibernatingCondition.Reason)
-}
-
-func validHibernationReason(lookup string) bool {
-	for _, val := range validHibernationReasons {
-		if val == lookup {
-			return true
-		}
-	}
-	return false
+	return hibernatingCondition.Reason == legacyHivev1RunningHibernationReason
 }
 
 func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.ClusterDeploymentConditionType) *hivev1.ClusterDeploymentCondition {
