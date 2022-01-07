@@ -35,17 +35,15 @@ var fedramp = os.Getenv("FEDRAMP") == "true"
 const (
 	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
 	DeadMansSnitchFinalizerPrefix = "dms.managed.openshift.io/deadmanssnitch-"
-	// These can be removed once Hive is promoted past f73ed3e in all environments
-	// Support for these conditions was removed in https://github.com/openshift/hive/pull/1604
-	legacyHivev1RunningHibernationReason  = "Running"
-	legacyHivev1ResumingHibernationReason = "Resuming"
+	// This can be removed once Hive is promoted past f73ed3e in all environments
+	// Support for this condition was removed in https://github.com/openshift/hive/pull/1604
+	legacyHivev1RunningHibernationReason = "Running"
 )
 
 var validHibernationReasons = []string{
 	hivev1.ResumingOrRunningHibernationReason,
-	// These can be removed once Hive is promoted past f73ed3e in all environments
-	// Support for these conditions was removed in https://github.com/openshift/hive/pull/1604
-	legacyHivev1ResumingHibernationReason,
+	// This can be removed once Hive is promoted past f73ed3e in all environments
+	// Support for this condition was removed in https://github.com/openshift/hive/pull/1604
 	legacyHivev1RunningHibernationReason,
 }
 
@@ -617,18 +615,29 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 }
 
 func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
+	// Get hibernation PowerState a new ClusterDeployment Status field indicating if the cluster is running
+	// ie. The cluster is not "Resuming" if the PowerState is "Running", the cluster is operational.
+	// If the field is blank we move on and check the legacy reasons (It may be blank if the running version of
+	// Hive on cluster doesn't yet support it)
+	if cd.Status.PowerState != "" && cd.Status.PowerState == "Running" {
+		return true
+	}
+
+	// This can be removed once Hive is promoted past f73ed3e in all environments
+	// We can rely on ClusterDeployment.Status.PowerState
 	hibernatingCondition := getCondition(cd.Status.Conditions, hivev1.ClusterHibernatingCondition)
 
-	// verify the ClusterDeployment has a hibernation condition
+	// Verify the ClusterDeployment has a hibernation condition
 	if hibernatingCondition == nil {
 		return false
 	}
 
-	// verify the hibernatingCondition is not active (ConditionTrue and ConditionUnknown are discarded)
+	// Verify the hibernatingCondition is not active (ConditionTrue and ConditionUnknown are discarded)
 	if hibernatingCondition.Status != corev1.ConditionFalse {
 		return false
 	}
 
+	// Check legacy Hibernation condition reasons
 	return validHibernationReason(hibernatingCondition.Reason)
 }
 
