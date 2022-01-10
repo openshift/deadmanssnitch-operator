@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
@@ -29,8 +30,6 @@ import (
 )
 
 var log = logf.Log.WithName("controller_deadmanssnitchintegration")
-
-var fedramp = os.Getenv("FEDRAMP") == "true"
 
 const (
 	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
@@ -130,10 +129,16 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling DeadmansSnitchIntegration")
 
-	if len(os.Getenv("FEDRAMP")) == 0 {
-		reqLogger.Info("FEDRAMP environment variable unset, defaulting to false")
-	} else {
+	//FEDRAMP environment variable defaulting to false.
+	fedramp := false
+	if fedrampVar, ok := os.LookupEnv("FEDRAMP"); ok {
+		fedramp, err := strconv.ParseBool(fedrampVar)
+		if err != nil {
+			reqLogger.Info("Unable to parse FEDRAMP environment variable. defaulting to %b.", fedramp)
+		}
 		reqLogger.Info("running in FedRAMP environment: %b", fedramp)
+	} else {
+		reqLogger.Info("FedRAMP environment variable unset, defaulting to %b", fedramp)
 	}
 
 	// Fetch the DeadmansSnitchIntegration dmsi
