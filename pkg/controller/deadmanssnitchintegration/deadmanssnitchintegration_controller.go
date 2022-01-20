@@ -129,16 +129,16 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling DeadmansSnitchIntegration")
 
-	//FEDRAMP environment variable defaulting to false.
+	//FedRAMP environment variable defaulting to false.
 	fedramp := false
 	if fedrampVar, ok := os.LookupEnv("FEDRAMP"); ok {
 		fedramp, err := strconv.ParseBool(fedrampVar)
 		if err != nil {
-			reqLogger.Info("Unable to parse FEDRAMP environment variable. defaulting to %b.", fedramp)
+			reqLogger.Info("Unable to parse FedRAMP environment variable", "Default value:", fedramp)
 		}
-		reqLogger.Info("running in FedRAMP environment: %b", fedramp)
+		reqLogger.Info("Running in FedRAMP", "FedRAMP environment", fedramp)
 	} else {
-		reqLogger.Info("FedRAMP environment variable unset, defaulting to %b", fedramp)
+		reqLogger.Info("FedRAMP environment variable unset", "Default value", fedramp)
 	}
 
 	// Fetch the DeadmansSnitchIntegration dmsi
