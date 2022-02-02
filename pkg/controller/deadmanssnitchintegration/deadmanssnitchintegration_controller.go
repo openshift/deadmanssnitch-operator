@@ -3,8 +3,6 @@ package deadmanssnitchintegration
 import (
 	"context"
 	"fmt"
-	"os"
-	"strconv"
 
 	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
@@ -129,16 +127,8 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling DeadmansSnitchIntegration")
 
-	//FedRAMP environment variable defaulting to false.
-	fedramp := false
-	if fedrampVar, ok := os.LookupEnv("FEDRAMP"); ok {
-		fedramp, err := strconv.ParseBool(fedrampVar)
-		if err != nil {
-			reqLogger.Info("Unable to parse FedRAMP environment variable", "Default value:", fedramp)
-		}
-		reqLogger.Info("Running in FedRAMP", "FedRAMP environment", fedramp)
-	} else {
-		reqLogger.Info("FedRAMP environment variable unset", "Default value", fedramp)
+	if config.IsFedramp() {
+		reqLogger.Info("Running in FedRAMP mode")
 	}
 
 	// Fetch the DeadmansSnitchIntegration dmsi
