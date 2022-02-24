@@ -34,9 +34,6 @@ var log = logf.Log.WithName("controller_deadmanssnitchintegration")
 const (
 	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
 	DeadMansSnitchFinalizerPrefix = "dms.managed.openshift.io/deadmanssnitch-"
-	// This can be removed once Hive is promoted past f73ed3e in all environments
-	// Support for this condition was removed in https://github.com/openshift/hive/pull/1604
-	legacyHivev1RunningHibernationReason = "Running"
 )
 
 // Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller

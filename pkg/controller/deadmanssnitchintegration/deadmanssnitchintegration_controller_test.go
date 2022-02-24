@@ -154,39 +154,6 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 	return &cd
 }
 
-func testLegacyClusterDeployment() *hivev1.ClusterDeployment {
-	labelMap := map[string]string{config.ClusterDeploymentManagedLabel: "true"}
-	finalizers := []string{deadMansSnitchFinalizer}
-
-	cd := hivev1.ClusterDeployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        testClusterName,
-			Namespace:   testNamespace,
-			Labels:      labelMap,
-			Finalizers:  finalizers,
-			UID:         testUID,
-			Annotations: map[string]string{},
-		},
-		Spec: hivev1.ClusterDeploymentSpec{
-			ClusterName: testClusterName,
-			BaseDomain:  "base.domain",
-			ClusterMetadata: &hivev1.ClusterMetadata{
-				ClusterID: testExternalID,
-			},
-		},
-	}
-	cd.Spec.Installed = true
-	cd.Status.Conditions = []hivev1.ClusterDeploymentCondition{
-		{
-			Type:   hivev1.ClusterHibernatingCondition,
-			Status: corev1.ConditionFalse,
-			Reason: legacyHivev1RunningHibernationReason,
-		},
-	}
-
-	return &cd
-}
-
 func testFakeClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
 
@@ -364,39 +331,6 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			name: "Test Creating",
 			localObjects: []runtime.Object{
 				testClusterDeployment(),
-				testSecret(),
-				testDeadMansSnitchIntegration(),
-			},
-			expectedSyncSets: &SyncSetEntry{
-				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
-				referencedSecretName:     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
-				clusterDeploymentRefName: testClusterName,
-			},
-			expectedSecret: &SecretEntry{
-				name:                     testClusterName + "-" + snitchNamePostFix + "-" + config.RefSecretPostfix,
-				snitchURL:                testSnitchURL,
-				clusterDeploymentRefName: testClusterName,
-			},
-			verifySyncSets: verifySyncSetExists,
-			verifySecret:   verifySecretExists,
-			setupDMSMock: func(r *mockdms.MockClientMockRecorder) {
-				r.Create(gomock.Any()).Return(dmsclient.Snitch{CheckInURL: testSnitchURL, Tags: []string{testTag}}, nil).Times(1)
-				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{}, nil).Times(1)
-				r.FindSnitchesByName(gomock.Any()).Return([]dmsclient.Snitch{
-					{
-						CheckInURL: testSnitchURL,
-						Status:     "pending",
-					},
-				}, nil).Times(2)
-				r.CheckIn(gomock.Any()).Return(nil).Times(1)
-				r.Update(gomock.Any()).Times(0)
-				r.Delete(gomock.Any()).Times(0)
-			},
-		},
-		{
-			name: "Test Creating Legacy Hibernation condition on ClusterDeployment",
-			localObjects: []runtime.Object{
-				testLegacyClusterDeployment(),
 				testSecret(),
 				testDeadMansSnitchIntegration(),
 			},
