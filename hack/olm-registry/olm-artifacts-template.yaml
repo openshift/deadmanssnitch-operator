@@ -28,7 +28,7 @@ objects:
     sourceType: grpc
     image: ${REPO_DIGEST}
     displayName: deadmanssnitch-operator Registry
-    publisher: SRE 
+    publisher: SRE
 
 - apiVersion: operators.coreos.com/v1alpha2
   kind: OperatorGroup
@@ -47,10 +47,10 @@ objects:
     name: deadmanssnitch-operator
     source: deadmanssnitch-operator-catalog
     sourceNamespace: deadmanssnitch-operator
-  config:
-    env:
-    - name: FEDRAMP
-      value: "${FEDRAMP}"
+    config:
+      env:
+      - name: FEDRAMP
+        value: "${FEDRAMP}"
 
 - apiVersion: deadmanssnitch.managed.openshift.io/v1alpha1
   kind: DeadmansSnitchIntegration
