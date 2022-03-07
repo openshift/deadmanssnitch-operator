@@ -344,7 +344,10 @@ func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmanssnitc
 func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
 	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
 	snitchName := utils.DmsSnitchName(cd.Spec.ClusterName, cd.Spec.BaseDomain, dmsi.Spec.SnitchNamePostFix)
-
+	if config.IsFedramp() {
+		// Use the clusterID as snitchName
+		snitchName = cd.Labels["id"]
+	}
 	ssName := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: cd.Namespace}, &hivev1.SyncSet{})
 
@@ -358,17 +361,16 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1
 		var snitch dmsclient.Snitch
 		if len(snitches) > 0 {
 			snitch = snitches[0]
-		} else {
-			newSnitch := dmsclient.NewSnitch(snitchName, dmsi.Spec.Tags, "15_minute", "basic")
-			newSnitch.Notes = fmt.Sprintf(`cluster_id: %s
-runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md`, cd.Spec.ClusterMetadata.ClusterID)
-			// add escaping since _ is not being recognized otherwise.
-			newSnitch.Notes = "```" + newSnitch.Notes + "```"
-			logger.Info(fmt.Sprint("Creating snitch:", snitchName))
-			snitch, err = dmsc.Create(newSnitch)
-			if err != nil {
-				return err
-			}
+		}
+		newSnitch := dmsclient.NewSnitch(snitchName, dmsi.Spec.Tags, "15_minute", "basic")
+		newSnitch.Notes = fmt.Sprintf(`cluster_id: %s
+runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md`, snitchName)
+		// add escaping since _ is not being recognized otherwise.
+		newSnitch.Notes = "```" + newSnitch.Notes + "```"
+		logger.Info(fmt.Sprint("Creating snitch:", snitchName))
+		snitch, err = dmsc.Create(newSnitch)
+		if err != nil {
+			return err
 		}
 
 		ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
