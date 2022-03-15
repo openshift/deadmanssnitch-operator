@@ -224,32 +224,34 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		specIsHibernating := clusterdeployment.Spec.PowerState == hivev1.HibernatingClusterPowerState
 
+		// Check if the cluster is hibernating
+		specIsHibernating := clusterdeployment.Spec.PowerState == hivev1.HibernatingClusterPowerState
 		if specIsHibernating {
 			if secretExist || syncSetExist {
 				err := r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
+
 			}
 		} else {
-			if instancesAreRunning(clusterdeployment) {
-				if !secretExist || !syncSetExist {
-					err = r.createSnitch(dmsi, &clusterdeployment, dmsc)
-					if err != nil {
-						return reconcile.Result{}, err
-					}
+			// If the cluster is a new install or if the cluster is not hibernating
+			// create DMS resources
+			if !secretExist || !syncSetExist {
+				err = r.createSnitch(dmsi, &clusterdeployment, dmsc)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
 
-					err = r.createSecret(dmsi, dmsc, clusterdeployment)
-					if err != nil {
-						return reconcile.Result{}, err
-					}
+				err = r.createSecret(dmsi, dmsc, clusterdeployment)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
 
-					err = r.createSyncset(dmsi, clusterdeployment)
-					if err != nil {
-						return reconcile.Result{}, err
-					}
+				err = r.createSyncset(dmsi, clusterdeployment)
+				if err != nil {
+					return reconcile.Result{}, err
 				}
 			}
 		}
@@ -602,40 +604,4 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 
 	return nil
 
-}
-
-func instancesAreRunning(cd hivev1.ClusterDeployment) bool {
-	// Get hibernation PowerState a new ClusterDeployment Status field indicating if the cluster is running
-	// ie. The cluster is not "Resuming" if the PowerState is "Running", the cluster is operational.
-	// If the field is blank we move on and check the legacy reasons (It may be blank if the running version of
-	// Hive on cluster doesn't yet support it)
-	if cd.Status.PowerState == "Running" {
-		return true
-	}
-
-	// This can be removed once Hive is promoted past f73ed3e in all environments
-	// We can rely on ClusterDeployment.Status.PowerState
-	hibernatingCondition := getCondition(cd.Status.Conditions, hivev1.ClusterHibernatingCondition)
-
-	// Verify the ClusterDeployment has a hibernation condition
-	if hibernatingCondition == nil {
-		return false
-	}
-
-	// Verify the hibernatingCondition is not active (ConditionTrue and ConditionUnknown are discarded)
-	if hibernatingCondition.Status != corev1.ConditionFalse {
-		return false
-	}
-
-	// Check legacy Hibernation condition reasons
-	return hibernatingCondition.Reason == legacyHivev1RunningHibernationReason
-}
-
-func getCondition(conditions []hivev1.ClusterDeploymentCondition, t hivev1.ClusterDeploymentConditionType) *hivev1.ClusterDeploymentCondition {
-	for _, condition := range conditions {
-		if condition.Type == t {
-			return &condition
-		}
-	}
-	return nil
 }
