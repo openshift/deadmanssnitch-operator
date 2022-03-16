@@ -2,7 +2,9 @@ package deadmanssnitchintegration
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/openshift/deadmanssnitch-operator/config"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
@@ -12,7 +14,7 @@ import (
 	hivev1 "github.com/openshift/hive/apis/hive/v1"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -136,7 +138,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 
 	err := r.client.Get(context.TODO(), request.NamespacedName, dmsi)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -345,15 +347,16 @@ func (r *ReconcileDeadmansSnitchIntegration) dmsAddFinalizer(dmsi *deadmanssnitc
 // create snitch in deadmanssnitch.com with information retrived from dmsi cr as well as the matching cluster deployment
 func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
 	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
-	snitchName := utils.DmsSnitchName(cd.Spec.ClusterName, cd.Spec.BaseDomain, dmsi.Spec.SnitchNamePostFix)
-	if config.IsFedramp() {
-		// Use the clusterID as snitchName
-		snitchName = cd.Labels["id"]
-	}
-	ssName := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: cd.Namespace}, &hivev1.SyncSet{})
 
-	if errors.IsNotFound(err) {
+	clusterID, err := getClusterID(*cd, config.IsFedramp())
+	if err != nil {
+		return err
+	}
+	snitchName := getSnitchName(*cd, dmsi.Spec.SnitchNamePostFix, config.IsFedramp())
+
+	ssName := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: cd.Namespace}, &hivev1.SyncSet{})
+	if k8errors.IsNotFound(err) {
 		logger.Info(fmt.Sprint("Checking if snitch already exists SnitchName:", snitchName))
 		snitches, err := dmsc.FindSnitchesByName(snitchName)
 		if err != nil {
@@ -366,7 +369,7 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1
 		}
 		newSnitch := dmsclient.NewSnitch(snitchName, dmsi.Spec.Tags, "15_minute", "basic")
 		newSnitch.Notes = fmt.Sprintf(`cluster_id: %s
-runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md`, snitchName)
+runbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md`, clusterID)
 		// add escaping since _ is not being recognized otherwise.
 		newSnitch.Notes = "```" + newSnitch.Notes + "```"
 		logger.Info(fmt.Sprint("Creating snitch:", snitchName))
@@ -410,18 +413,18 @@ func (r *ReconcileDeadmansSnitchIntegration) snitchResourcesExist(dmsi *deadmans
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{Name: dmsSecret, Namespace: cd.Namespace},
 		&corev1.Secret{})
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8errors.IsNotFound(err) {
 		return false, false, err
 	}
-	secretExist = !errors.IsNotFound(err)
+	secretExist = !k8errors.IsNotFound(err)
 
 	logger.Info("Checking if syncset exists")
 	syncSetExist := false
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: dmsSecret, Namespace: cd.Namespace}, &hivev1.SyncSet{})
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8errors.IsNotFound(err) {
 		return secretExist, false, err
 	}
-	syncSetExist = !errors.IsNotFound(err)
+	syncSetExist = !k8errors.IsNotFound(err)
 
 	return secretExist, syncSetExist, nil
 }
@@ -435,14 +438,14 @@ func (r *ReconcileDeadmansSnitchIntegration) createSecret(dmsi *deadmanssnitchv1
 		types.NamespacedName{Name: dmsSecret, Namespace: cd.Namespace},
 		&corev1.Secret{})
 
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8errors.IsNotFound(err) {
 		logger.Error(err, "Failed to fetch secret")
 		return err
 	}
 
-	if errors.IsNotFound(err) {
+	if k8errors.IsNotFound(err) {
 		logger.Info("Secret not found creating secret")
-		snitchName := utils.DmsSnitchName(cd.Spec.ClusterName, cd.Spec.BaseDomain, dmsi.Spec.SnitchNamePostFix)
+		snitchName := getSnitchName(cd, dmsi.Spec.SnitchNamePostFix, config.IsFedramp())
 		ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
 
 		if err != nil {
@@ -475,7 +478,7 @@ func (r *ReconcileDeadmansSnitchIntegration) createSyncset(dmsi *deadmanssnitchv
 	ssName := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: cd.Namespace}, &hivev1.SyncSet{})
 
-	if errors.IsNotFound(err) {
+	if k8errors.IsNotFound(err) {
 		logger.Info("SyncSet not found, Creating a new SyncSet")
 
 		newSS := newSyncSet(cd.Namespace, ssName, cd.Name, dmsi)
@@ -561,7 +564,7 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 
 	// Delete the dms
 	logger.Info("Deleting the DMS from api.deadmanssnitch.com")
-	snitchName := utils.DmsSnitchName(clusterDeployment.Spec.ClusterName, clusterDeployment.Spec.BaseDomain, dmsi.Spec.SnitchNamePostFix)
+	snitchName := getSnitchName(*clusterDeployment, dmsi.Spec.SnitchNamePostFix, config.IsFedramp())
 	snitches, err := dmsc.FindSnitchesByName(snitchName)
 	if err != nil {
 		return err
@@ -604,4 +607,38 @@ func (r *ReconcileDeadmansSnitchIntegration) deleteDMSClusterDeployment(dmsi *de
 
 	return nil
 
+}
+
+// getClusterID determines if fedramp or not
+// Returns internal clusterID for fedramp and external clusterID if not
+func getClusterID(cd hivev1.ClusterDeployment, isFedramp bool) (string, error) {
+	if cd.Spec.ClusterMetadata == nil || cd.Spec.ClusterMetadata.ClusterID == "" {
+		return "", errors.New("Unable to get ClusterID from ClusterDeployment")
+	}
+
+	clusterID := cd.Spec.ClusterMetadata.ClusterID
+
+	if isFedramp {
+		clusterID = getInternalClusterID(cd)
+	}
+	return clusterID, nil
+}
+
+// getSnitchName determines if fedramp or not
+// Returns internal clusterID for fedramp and "(cd.Spec.ClusterName).(cd.Spec.BaseDomain)" if not
+func getSnitchName(cd hivev1.ClusterDeployment, optionalPostFix string, isFedramp bool) string {
+	snitchName := cd.Spec.ClusterName + "." + cd.Spec.BaseDomain
+	if optionalPostFix != "" {
+		snitchName += "-" + optionalPostFix
+	}
+
+	if isFedramp {
+		snitchName = getInternalClusterID(cd)
+	}
+	return snitchName
+}
+
+func getInternalClusterID(cd hivev1.ClusterDeployment) string {
+	cns := strings.Split(cd.Namespace, "-")
+	return cns[len(cns)-1]
 }
