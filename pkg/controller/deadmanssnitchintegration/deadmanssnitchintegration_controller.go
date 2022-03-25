@@ -356,45 +356,47 @@ func (r *ReconcileDeadmansSnitchIntegration) createSnitch(dmsi *deadmanssnitchv1
 
 	ssName := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: cd.Namespace}, &hivev1.SyncSet{})
-	if k8errors.IsNotFound(err) {
-		logger.Info(fmt.Sprint("Checking if snitch already exists SnitchName:", snitchName))
-		snitches, err := dmsc.FindSnitchesByName(snitchName)
-		if err != nil {
-			return err
-		}
-
-		var snitch dmsclient.Snitch
-		if len(snitches) > 0 {
-			snitch = snitches[0]
-		} else {
-			newSnitch := dmsclient.NewSnitch(snitchName, dmsi.Spec.Tags, "15_minute", "basic")
-			newSnitch.Notes = fmt.Sprintf(`cluster_id: %s\nrunbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md`, clusterID)
-			// add escaping since _ is not being recognized otherwise.
-			newSnitch.Notes = "```" + newSnitch.Notes + "```"
-			logger.Info(fmt.Sprint("Creating snitch:", snitchName))
-			snitch, err = dmsc.Create(newSnitch)
+	if err != nil {
+		if k8errors.IsNotFound(err) {
+			logger.Info(fmt.Sprint("Checking if snitch already exists SnitchName:", snitchName))
+			snitches, err := dmsc.FindSnitchesByName(snitchName)
 			if err != nil {
 				return err
 			}
-		}
-		ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
-		if err != nil {
-			return err
-		}
 
-		if len(ReSnitches) > 0 {
-			if ReSnitches[0].Status == "pending" {
-				logger.Info("Checking in Snitch ...")
-				// CheckIn snitch
-				err = dmsc.CheckIn(snitch)
+			var snitch dmsclient.Snitch
+			if len(snitches) > 0 {
+				snitch = snitches[0]
+			} else {
+				newSnitch := dmsclient.NewSnitch(snitchName, dmsi.Spec.Tags, "15_minute", "basic")
+				newSnitch.Notes = fmt.Sprintf(`cluster_id: %s\nrunbook: https://github.com/openshift/ops-sop/blob/master/v4/alerts/cluster_has_gone_missing.md`, clusterID)
+				// add escaping since _ is not being recognized otherwise.
+				newSnitch.Notes = "```" + newSnitch.Notes + "```"
+				logger.Info(fmt.Sprint("Creating snitch:", snitchName))
+				snitch, err = dmsc.Create(newSnitch)
 				if err != nil {
-					logger.Error(err, "Unable to check in deadman's snitch", "CheckInURL", snitch.CheckInURL)
 					return err
 				}
 			}
-		} else {
-			logger.Error(err, "Unable to get Snitch by name")
-			return err
+			ReSnitches, err := dmsc.FindSnitchesByName(snitchName)
+			if err != nil {
+				return err
+			}
+
+			if len(ReSnitches) > 0 {
+				if ReSnitches[0].Status == "pending" {
+					logger.Info("Checking in Snitch ...")
+					// CheckIn snitch
+					err = dmsc.CheckIn(snitch)
+					if err != nil {
+						logger.Error(err, "Unable to check in deadman's snitch", "CheckInURL", snitch.CheckInURL)
+						return err
+					}
+				}
+			} else {
+				logger.Error(err, "Unable to get Snitch by name")
+				return err
+			}
 		}
 	}
 
