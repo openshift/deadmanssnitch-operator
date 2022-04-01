@@ -52,9 +52,14 @@ data:
 ```
 
 - Build a docker image and replace `REPLACE_IMAGE` [operator.yaml](deploy/operator.yaml) field with that image
+  - you can do that using `oc create -f https://github.com/openshift/deadmanssnitch-operator/raw/master/deploy/operator.yaml --dry-run=client -oyaml | oc set image --local -f - --dry-run=client -oyaml *=REPLACE_IMAGE`
 - Deploy using `oc apply -f deploy/`
 
 ## Development
+
+<details>
+  <summary> how to develop this locally</summary>
+    <p>
 
 ### Set up local OpenShift cluster
 
@@ -180,3 +185,6 @@ If deleting the `clusterdeployment`, you may need to remove dangling finalizers 
 ```terminal
 $ oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
 ```
+
+</p>
+</details>
