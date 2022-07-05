@@ -11,6 +11,7 @@ import (
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
+	//#nosec SA1019 -- controller-runtime version is forced by current operator-sdk which we can't updagre to v1+ for now
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"testing"

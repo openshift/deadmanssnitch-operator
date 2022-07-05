@@ -78,7 +78,7 @@ tags
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 
 .operator-sdk
-
+.venv
 ### Local testing of app-sre pipeline creates these
 .docker/
 Dockerfile.olm-registry
