@@ -166,7 +166,8 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 	}
 
 	if dmsi.DeletionTimestamp != nil {
-		for _, clusterdeployment := range allClusterDeployments.Items {
+		for i := range allClusterDeployments.Items {
+			clusterdeployment := allClusterDeployments.Items[i]
 			if utils.HasFinalizer(&clusterdeployment, deadMansSnitchFinalizer) {
 				err = r.deleteDMSClusterDeployment(dmsi, &clusterdeployment, dmsc)
 				if err != nil {
@@ -186,8 +187,8 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		return reconcile.Result{}, nil
 	}
 
-	for _, clusterdeployment := range allClusterDeployments.Items {
-
+	for i  := range allClusterDeployments.Items {
+		clusterdeployment := allClusterDeployments.Items[i]
 		// Check if the cluster matches the requirements for needing DMS setup
 		clusterMatched := false
 		for _, matchingClusterDeployment := range matchingClusterDeployments {
