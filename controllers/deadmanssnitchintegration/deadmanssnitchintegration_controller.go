@@ -1,4 +1,20 @@
-package deadmanssnitchintegration
+/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controllers
 
 import (
 	"context"
@@ -6,113 +22,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openshift/deadmanssnitch-operator/config"
-	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
-	"github.com/openshift/deadmanssnitch-operator/pkg/dmsclient"
-	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
-	"github.com/openshift/deadmanssnitch-operator/pkg/utils"
-	hivev1 "github.com/openshift/hive/apis/hive/v1"
-
-	corev1 "k8s.io/api/core/v1"
-	k8errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/api/v1alpha1"
+	"github.com/openshift/hive/pkg/controller/utils"
 )
 
-var log = logf.Log.WithName("controller_deadmanssnitchintegration")
-
-const (
-	deadMansSnitchAPISecretKey    = "deadmanssnitch-api-key"
-	DeadMansSnitchFinalizerPrefix = "dms.managed.openshift.io/deadmanssnitch-"
-)
-
-// Add creates a new DeadmansSnitchIntegration Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
-}
-
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileDeadmansSnitchIntegration{
-		//client:    mgr.GetClient(),
-		client:    mgr.GetClient(),
-		scheme:    mgr.GetScheme(),
-		dmsclient: dmsclient.NewClient,
-	}
-}
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New("deadmanssnitchintegration-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to primary resource DeadmansSnitchIntegration
-	err = c.Watch(&source.Kind{Type: &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	err = c.Watch(&source.Kind{Type: &hivev1.ClusterDeployment{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: clusterDeploymentToDeadMansSnitchIntegrationsMapper{
-				Client: mgr.GetClient(),
-			},
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to SyncSets. If one has any ClusterDeployment owner
-	// references, queue a request for all DeadMansSnitchIntegration CR that
-	// select those ClusterDeployments.
-	err = c.Watch(&source.Kind{Type: &hivev1.SyncSet{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: ownedByClusterDeploymentToDeadMansSnitchIntegrationsMapper{
-				Client: mgr.GetClient(),
-			},
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to Secrets. If one has any ClusterDeployment owner
-	// references, queue a request for all DeadMansSnitchIntegration CR that
-	// select those ClusterDeployments.
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: ownedByClusterDeploymentToDeadMansSnitchIntegrationsMapper{
-				Client: mgr.GetClient(),
-			},
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// blank assignment to verify that ReconcileDeadmansSnitchIntegration implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileDeadmansSnitchIntegration{}
-
-// ReconcileDeadmansSnitchIntegration reconciles a DeadmansSnitchIntegration object
-type ReconcileDeadmansSnitchIntegration struct {
+// DeadmansSnitchIntegrationReconciler reconciles a DeadmansSnitchIntegration object
+type DeadmansSnitchIntegrationReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client    client.Client
@@ -120,9 +43,22 @@ type ReconcileDeadmansSnitchIntegration struct {
 	dmsclient func(authToken string, collector *localmetrics.MetricsCollector) dmsclient.Client
 }
 
-// Reconcile reads that state of the cluster for a DeadmansSnitchIntegration object and makes changes based on the state read
-// and what is in the DeadmansSnitchIntegration.Spec
-func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+//+kubebuilder:rbac:groups=deadmanssnitch.managed.openshift.io,resources=deadmanssnitchintegrations,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=deadmanssnitch.managed.openshift.io,resources=deadmanssnitchintegrations/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=deadmanssnitch.managed.openshift.io,resources=deadmanssnitchintegrations/finalizers,verbs=update
+
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+// TODO(user): Modify the Reconcile function to compare the state specified by
+// the DeadmansSnitchIntegration object against the actual cluster state, and then
+// perform operations to make the cluster state reflect the state specified by
+// the user.
+//
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.2/pkg/reconcile
+func (r *DeadmansSnitchIntegrationReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+	_ = log.FromContext(ctx)
+
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling DeadmansSnitchIntegration")
 
@@ -187,7 +123,7 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 		return reconcile.Result{}, nil
 	}
 
-	for i  := range allClusterDeployments.Items {
+	for i := range allClusterDeployments.Items {
 		clusterdeployment := allClusterDeployments.Items[i]
 		// Check if the cluster matches the requirements for needing DMS setup
 		clusterMatched := false
@@ -259,8 +195,24 @@ func (r *ReconcileDeadmansSnitchIntegration) Reconcile(request reconcile.Request
 
 	log.Info("Reconcile of deadmanssnitch integration complete")
 
-	return reconcile.Result{}, nil
+	return ctrl.Result{}, nil
 }
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *DeadmansSnitchIntegrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&deadmanssnitchv1alpha1.DeadmansSnitchIntegration{}).
+		Watches(&source.Kind{Type: &hivev1.ClusterDeployment{}}, &enqueueRequestForClusterDeployment{
+			Client: mgr.GetClient(),
+		}).
+		Watches(&source.Kind{Type: &hivev1.SyncSet{}}, &enqueueRequestForClusterDeploymentOwner{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &enqueueRequestForClusterDeploymentOwner{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).		Complete(r)
 
 // getMatchingClusterDeployment gets all ClusterDeployments matching the DMSI selector
 func (r *ReconcileDeadmansSnitchIntegration) getMatchingClusterDeployment(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration) ([]hivev1.ClusterDeployment, error) {

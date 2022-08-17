@@ -7,10 +7,11 @@ import (
 	"github.com/golang/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	dmsapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
-	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
+	dmsapis "github.com/openshift/deadmanssnitch-operator/api"
+	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/api/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
+
 	// nolint:staticcheck
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
