@@ -7,7 +7,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	dmsapis "github.com/openshift/deadmanssnitch-operator/api"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/api/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
@@ -149,7 +148,7 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 		{
 			Type:   hivev1.ClusterHibernatingCondition,
 			Status: corev1.ConditionFalse,
-			Reason: hivev1.ResumingOrRunningHibernationReason,
+			Reason: hivev1.HibernatingReasonHibernating,
 		},
 	}
 
@@ -316,7 +315,7 @@ func deletedNonManagedClusterDeployment() *hivev1.ClusterDeployment {
 }
 
 func TestReconcileClusterDeployment(t *testing.T) {
-	err := dmsapis.AddToScheme(scheme.Scheme)
+	err := deadmanssnitchv1alpha1.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
 	err = hiveapis.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
@@ -612,7 +611,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			// after mocks is defined
 			defer mocks.mockCtrl.Finish()
 
-			rdms := &ReconcileDeadmansSnitchIntegration{
+			rdms := &DeadmansSnitchIntegrationReconciler{
 				client: mocks.fakeKubeClient,
 				scheme: scheme.Scheme,
 				dmsclient: func(apiKey string, collector *localmetrics.MetricsCollector) dmsclient.Client {
@@ -621,19 +620,19 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			}
 
 			// run reconcile multiple times to verify API calls to DMS are minimal
-			_, err1 := rdms.Reconcile(reconcile.Request{
+			_, err1 := rdms.Reconcile(context.TODO(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      testDeadMansSnitchintegrationName,
 					Namespace: config.OperatorNamespace,
 				},
 			})
-			_, err2 := rdms.Reconcile(reconcile.Request{
+			_, err2 := rdms.Reconcile(context.TODO(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      testDeadMansSnitchintegrationName,
 					Namespace: config.OperatorNamespace,
 				},
 			})
-			_, err3 := rdms.Reconcile(reconcile.Request{
+			_, err3 := rdms.Reconcile(context.TODO(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      testDeadMansSnitchintegrationName,
 					Namespace: config.OperatorNamespace,
