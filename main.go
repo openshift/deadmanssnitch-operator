@@ -18,13 +18,17 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"runtime"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"k8s.io/apimachinery/pkg/runtime"
+	hivev1 "github.com/openshift/hive/apis/hive/v1"
+
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -37,15 +41,24 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme      = k8sruntime.NewScheme()
+	setupLog    = ctrl.Log.WithName("setup")
+	metricsPath = "/metrics"
+	// metricsPort the port on which metrics is hosted, don't pick one that's already used
+	metricsPort = "8081"
 )
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
+	utilruntime.Must(hivev1.AddToScheme(scheme))
 	utilruntime.Must(deadmanssnitchv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+}
+
+func printVersion() {
+	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
+	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 }
 
 func main() {
@@ -71,7 +84,7 @@ func main() {
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "3a94b80a.managed.openshift.io",
+		LeaderElectionID:       "3a94b80a.deadmanssnitch.managed.openshift.io",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

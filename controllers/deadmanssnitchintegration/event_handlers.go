@@ -19,9 +19,8 @@ package deadmanssnitchintegration
 import (
 	"context"
 
-	"github.com/apex/log"
-	hivev1 "github.com/openshift/hive/apis/hive/v1"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/api/v1alpha1"
+	hivev1 "github.com/openshift/hive/apis/hive/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -64,11 +63,11 @@ func (e *enqueueRequestForClusterDeployment) Generic(evt event.GenericEvent, q w
 }
 
 // toRequests receives a ClusterDeployment objects that have fired an event and checks if it can find an associated
-// PagerDutyIntegration object that has a matching label selector, if so it creates a request for the reconciler to
-// take a look at that PagerDutyIntegration object.
+// DeadmansSnitchIntegration object that has a matching label selector, if so it creates a request for the reconciler to
+// take a look at that DeadmansSnitchIntegration object.
 func (e *enqueueRequestForClusterDeployment) toRequests(obj client.Object) []reconcile.Request {
 	reqs := []reconcile.Request{}
-	dmsiList := &deadmanssnitchv1alpha1.DeadmansSnitchIntegrationList{}
+	dmiList := &deadmanssnitchv1alpha1.DeadmansSnitchIntegrationList{}
 	if err := e.Client.List(context.TODO(), dmiList, &client.ListOptions{}); err != nil {
 		return reqs
 	}
@@ -135,9 +134,9 @@ func (e *enqueueRequestForClusterDeploymentOwner) getClusterDeploymentGroupKind(
 	}
 }
 
-// getAssociatedPagerDutyIntegrations receives objects and checks if they're owned by a ClusterDeployment. If so, it then
-// collects associated PagerDutyIntegration CRs and creates requests for the reconciler to consider.
-func (e *enqueueRequestForClusterDeploymentOwner) getAssociatedPagerDutyIntegrations(obj metav1.Object) map[reconcile.Request]struct{} {
+// getAssociatedDeadmansSnitchIntegrations receives objects and checks if they're owned by a ClusterDeployment. If so, it then
+// collects associated DeadmansSnitchIntegration CRs and creates requests for the reconciler to consider.
+func (e *enqueueRequestForClusterDeploymentOwner) getAssociatedDeadmansSnitchIntegrations(obj metav1.Object) map[reconcile.Request]struct{} {
 	e.getClusterDeploymentGroupKind()
 
 	cds := []*hivev1.ClusterDeployment{}
@@ -165,7 +164,7 @@ func (e *enqueueRequestForClusterDeploymentOwner) getAssociatedPagerDutyIntegrat
 	reqs := map[reconcile.Request]struct{}{}
 	dmiList := &deadmanssnitchv1alpha1.DeadmansSnitchIntegrationList{}
 	if err := e.Client.List(context.TODO(), dmiList, &client.ListOptions{}); err != nil {
-		log.Error(err, "could not list PagerDutyIntegrations")
+		log.Error(err, "could not list DeadmansSnitchIntegrations")
 		return reqs
 	}
 
@@ -192,7 +191,7 @@ func (e *enqueueRequestForClusterDeploymentOwner) getAssociatedPagerDutyIntegrat
 }
 
 func (e *enqueueRequestForClusterDeploymentOwner) mapAndEnqueue(q workqueue.RateLimitingInterface, obj client.Object) {
-	for req := range e.getAssociatedPagerDutyIntegrations(obj) {
+	for req := range e.getAssociatedDeadmansSnitchIntegrations(obj) {
 		q.Add(req)
 	}
 }

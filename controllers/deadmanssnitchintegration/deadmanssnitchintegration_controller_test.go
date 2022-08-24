@@ -143,7 +143,7 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 		},
 	}
 	cd.Spec.Installed = true
-	cd.Status.PowerState = hivev1.RunningReadyReason
+	cd.Status.PowerState = hivev1.ClusterPowerStateRunning
 	cd.Status.Conditions = []hivev1.ClusterDeploymentCondition{
 		{
 			Type:   hivev1.ClusterHibernatingCondition,
@@ -273,15 +273,15 @@ func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 	return cd
 }
 
-// return a hibernating ClusterDeployment with Spec.PowerState == hivev1.HibernatingClusterPowerState
+// return a hibernating ClusterDeployment with Spec.PowerState == hivev1.ClusterPowerStateHibernating
 func hibernatingClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
-	cd.Spec.PowerState = hivev1.HibernatingClusterPowerState
+	cd.Spec.PowerState = hivev1.ClusterPowerStateHibernating
 	cd.Status.Conditions = []hivev1.ClusterDeploymentCondition{
 		{
 			Type:   hivev1.ClusterHibernatingCondition,
 			Status: corev1.ConditionTrue,
-			Reason: hivev1.HibernatingHibernationReason,
+			Reason: hivev1.HibernatingReasonHibernating,
 		},
 	}
 
@@ -612,8 +612,8 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			defer mocks.mockCtrl.Finish()
 
 			rdms := &DeadmansSnitchIntegrationReconciler{
-				client: mocks.fakeKubeClient,
-				scheme: scheme.Scheme,
+				Client: mocks.fakeKubeClient,
+				Scheme: scheme.Scheme,
 				dmsclient: func(apiKey string, collector *localmetrics.MetricsCollector) dmsclient.Client {
 					return mocks.mockDMSClient
 				},

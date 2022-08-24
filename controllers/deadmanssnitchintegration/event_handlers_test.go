@@ -169,8 +169,7 @@ func mockDeadmansSnitchIntegration(name string, labels map[string]string) *deadm
 			ClusterDeploymentSelector: metav1.LabelSelector{
 				MatchLabels: labels,
 			},
-			ServicePrefix: "test",
-			PagerdutyApiKeySecretRef: corev1.SecretReference{
+			DmsAPIKeySecretRef: corev1.SecretReference{
 				Name:      "test",
 				Namespace: "test",
 			},

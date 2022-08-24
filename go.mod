@@ -3,7 +3,6 @@ module github.com/openshift/deadmanssnitch-operator
 go 1.17
 
 require (
-	github.com/apex/log v1.9.0
 	github.com/go-logr/logr v1.2.3
 	github.com/golang/mock v1.6.0
 	github.com/openshift/hive/apis v0.0.0-20220822192833-c9536111c665
@@ -13,7 +12,7 @@ require (
 	k8s.io/apimachinery v0.24.1
 	k8s.io/client-go v0.23.5
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42
-	sigs.k8s.io/controller-runtime v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/controller-runtime v0.11.2
 )
 
 require (
@@ -85,12 +84,11 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace k8s.io/api => k8s.io/api v0.23.5
-
-replace k8s.io/apimachinery => k8s.io/apimachinery v0.23.5
-
-replace k8s.io/client-go => k8s.io/client-go v0.23.5
-
-replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42
-
-replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.11.2
+replace (
+	github.com/openshift/api => github.com/openshift/api v0.0.0-20220414050251-a83e6f8f1d50
+	k8s.io/api => k8s.io/api v0.23.5
+	k8s.io/apimachinery => k8s.io/apimachinery v0.23.5
+	k8s.io/client-go => k8s.io/client-go v0.23.5
+	// k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42
+	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.11.2
+)
