@@ -54,6 +54,7 @@ type DeadmansSnitchIntegrationStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:path=deadmanssnitchintegrations,shortName=dmsi,scope=Namespaced
 
 // DeadmansSnitchIntegration is the Schema for the deadmanssnitchintegrations API
 type DeadmansSnitchIntegration struct {
