@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -27,6 +28,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	hivev1 "github.com/openshift/hive/apis/hive/v1"
+	"github.com/openshift/operator-custom-metrics/pkg/metrics"
 
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -36,7 +38,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/api/v1alpha1"
+	operatorconfig "github.com/openshift/deadmanssnitch-operator/config"
 	controllers "github.com/openshift/deadmanssnitch-operator/controllers/deadmanssnitchintegration"
+	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -78,9 +82,19 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// Print configuration info
+	printVersion()
+	if err := operatorconfig.SetIsFedramp(); err != nil {
+		setupLog.Error(err, "failed to get fedramp value")
+		os.Exit(1)
+	}
+	if operatorconfig.IsFedramp() {
+		setupLog.Info("running in fedramp environment.")
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
+		MetricsBindAddress:     "0", // disable the controller-runtime metrics
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
@@ -106,6 +120,20 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	// Configure custom metrics
+	localmetrics.Collector = localmetrics.NewMetricsCollector()
+	metricsServer := metrics.NewBuilder(operatorconfig.OperatorNamespace, operatorconfig.OperatorName).
+		WithPort(metricsPort).
+		WithPath(metricsPath).
+		WithCollector(localmetrics.Collector).
+		WithRoute().
+		GetConfig()
+
+	if err := metrics.ConfigureMetrics(context.TODO(), *metricsServer); err != nil {
+		setupLog.Error(err, "failed to configure custom metrics")
 		os.Exit(1)
 	}
 
