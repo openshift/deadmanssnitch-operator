@@ -5,14 +5,13 @@ import (
 	"fmt"
 
 	"github.com/golang/mock/gomock"
-	"k8s.io/apimachinery/pkg/api/errors"
-
+	routev1 "github.com/openshift/api/route/v1"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/api/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	// nolint:staticcheck
-	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"testing"
 
@@ -25,8 +24,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -72,8 +74,12 @@ type mocks struct {
 
 // setupDefaultMocks is an easy way to setup all of the default mocks
 func setupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
+	fakeScheme := k8sruntime.NewScheme()
+	utilruntime.Must(routev1.Install(fakeScheme))
+	utilruntime.Must(hivev1.AddToScheme(fakeScheme))
+	utilruntime.Must(deadmanssnitchv1alpha1.AddToScheme(fakeScheme))
 	mocks := &mocks{
-		fakeKubeClient: fakekubeclient.NewFakeClient(localObjects...),
+		fakeKubeClient: fake.NewClientBuilder().WithScheme(fakeScheme).WithRuntimeObjects(localObjects...).Build(),
 		mockCtrl:       gomock.NewController(t),
 	}
 
