@@ -143,7 +143,7 @@ spec:
 
 ```terminal
 $ export OPERATOR_NAME=deadmanssnitch-operator
-$ go run cmd/manager/main.go
+$ go run main.go
 ```
 
 ### Create Clusterdeployment
