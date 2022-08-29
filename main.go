@@ -25,6 +25,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"github.com/operator-framework/operator-lib/leader"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	hivev1 "github.com/openshift/hive/apis/hive/v1"
@@ -100,6 +101,12 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	err = leader.Become(context.TODO(), "memcached-operator-lock")
+	if err != nil {
+		setupLog.Error(err, "Failed to retry for leader lock")
 		os.Exit(1)
 	}
 

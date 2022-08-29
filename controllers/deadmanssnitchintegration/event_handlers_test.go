@@ -41,13 +41,13 @@ func Test_enqueueRequestForClusterDeployment_toRequests(t *testing.T) {
 	tests := []struct {
 		name             string
 		obj              client.Object
-		pdiObjs          []runtime.Object
+		dmsiObjs         []runtime.Object
 		expectedRequests int
 	}{
 		{
 			name:             "empty ClusterDeployment",
 			obj:              &hivev1.ClusterDeployment{},
-			pdiObjs:          []runtime.Object{},
+			dmsiObjs:         []runtime.Object{},
 			expectedRequests: 0,
 		},
 		{
@@ -55,14 +55,14 @@ func Test_enqueueRequestForClusterDeployment_toRequests(t *testing.T) {
 			obj: &hivev1.ClusterDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"pdiWatching": "clusterDeployment1",
+						"dmsiWatching": "clusterDeployment1",
 					},
 				},
 			},
-			pdiObjs: []runtime.Object{
-				mockDeadmansSnitchIntegration("pdi1", map[string]string{"pdiWatching": "clusterDeployment1"}),
-				mockDeadmansSnitchIntegration("pdi2", map[string]string{"pdiWatching": "clusterDeployment2"}),
-				mockDeadmansSnitchIntegration("pdi3", map[string]string{"pdiWatching": "clusterDeployment1"}),
+			dmsiObjs: []runtime.Object{
+				mockDeadmansSnitchIntegration("dmsi1", map[string]string{"dmsiWatching": "clusterDeployment1"}),
+				mockDeadmansSnitchIntegration("dmsi2", map[string]string{"dmsiWatching": "clusterDeployment2"}),
+				mockDeadmansSnitchIntegration("dmsi3", map[string]string{"dmsiWatching": "clusterDeployment1"}),
 			},
 			expectedRequests: 2,
 		},
@@ -70,7 +70,7 @@ func Test_enqueueRequestForClusterDeployment_toRequests(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			e := &enqueueRequestForClusterDeployment{
-				Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(test.obj).WithRuntimeObjects(test.pdiObjs...).Build(),
+				Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(test.obj).WithRuntimeObjects(test.dmsiObjs...).Build(),
 			}
 			reqs := e.toRequests(test.obj)
 			assert.Equal(t, test.expectedRequests, len(reqs))
@@ -91,14 +91,14 @@ func Test_enqueueRequestForClusterDeploymentOwner_getAssociatedDeadmansSnitchInt
 		name             string
 		obj              client.Object
 		cdObjs           []runtime.Object
-		pdiObjs          []runtime.Object
+		dmsiObjs         []runtime.Object
 		expectedRequests int
 	}{
 		{
 			name:             "Secret with no OwnerReference",
 			obj:              &corev1.Secret{},
 			cdObjs:           []runtime.Object{},
-			pdiObjs:          []runtime.Object{},
+			dmsiObjs:         []runtime.Object{},
 			expectedRequests: 0,
 		},
 		{
@@ -130,15 +130,15 @@ func Test_enqueueRequestForClusterDeploymentOwner_getAssociatedDeadmansSnitchInt
 						Name:      "clusterDeployment1",
 						Namespace: "ns1",
 						Labels: map[string]string{
-							"pdiWatching": "clusterDeployment1",
+							"dmsiWatching": "clusterDeployment1",
 						},
 					},
 				},
 			},
-			pdiObjs: []runtime.Object{
-				mockDeadmansSnitchIntegration("pdi1", map[string]string{"pdiWatching": "clusterDeployment1"}),
-				mockDeadmansSnitchIntegration("pdi2", map[string]string{"pdiWatching": "clusterDeployment2"}),
-				mockDeadmansSnitchIntegration("pdi3", map[string]string{"pdiWatching": "clusterDeployment1"}),
+			dmsiObjs: []runtime.Object{
+				mockDeadmansSnitchIntegration("dmsi1", map[string]string{"dmsiWatching": "clusterDeployment1"}),
+				mockDeadmansSnitchIntegration("dmsi2", map[string]string{"dmsiWatching": "clusterDeployment2"}),
+				mockDeadmansSnitchIntegration("dmsi3", map[string]string{"dmsiWatching": "clusterDeployment1"}),
 			},
 			expectedRequests: 2,
 		},
@@ -149,7 +149,7 @@ func Test_enqueueRequestForClusterDeploymentOwner_getAssociatedDeadmansSnitchInt
 				Client: fake.NewClientBuilder().
 					WithScheme(scheme).
 					WithObjects(test.obj).
-					WithRuntimeObjects(test.pdiObjs...).
+					WithRuntimeObjects(test.dmsiObjs...).
 					WithRuntimeObjects(test.cdObjs...).
 					Build(),
 			}
