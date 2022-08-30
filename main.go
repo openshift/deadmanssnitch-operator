@@ -104,7 +104,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = leader.Become(context.TODO(), "memcached-operator-lock")
+	err = leader.Become(context.TODO(), "deadmanssnitch-operator-lock")
 	if err != nil {
 		setupLog.Error(err, "Failed to retry for leader lock")
 		os.Exit(1)
