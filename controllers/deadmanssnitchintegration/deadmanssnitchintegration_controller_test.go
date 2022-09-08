@@ -5,14 +5,13 @@ import (
 	"fmt"
 
 	"github.com/golang/mock/gomock"
-	"k8s.io/apimachinery/pkg/api/errors"
-
-	dmsapis "github.com/openshift/deadmanssnitch-operator/pkg/apis"
-	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/pkg/apis/deadmanssnitch/v1alpha1"
+	routev1 "github.com/openshift/api/route/v1"
+	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/api/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	// nolint:staticcheck
-	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"testing"
 
@@ -25,8 +24,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -72,8 +74,12 @@ type mocks struct {
 
 // setupDefaultMocks is an easy way to setup all of the default mocks
 func setupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
+	fakeScheme := k8sruntime.NewScheme()
+	utilruntime.Must(routev1.Install(fakeScheme))
+	utilruntime.Must(hivev1.AddToScheme(fakeScheme))
+	utilruntime.Must(deadmanssnitchv1alpha1.AddToScheme(fakeScheme))
 	mocks := &mocks{
-		fakeKubeClient: fakekubeclient.NewFakeClient(localObjects...),
+		fakeKubeClient: fake.NewClientBuilder().WithScheme(fakeScheme).WithRuntimeObjects(localObjects...).Build(),
 		mockCtrl:       gomock.NewController(t),
 	}
 
@@ -143,12 +149,12 @@ func testClusterDeployment() *hivev1.ClusterDeployment {
 		},
 	}
 	cd.Spec.Installed = true
-	cd.Status.PowerState = hivev1.RunningReadyReason
+	cd.Status.PowerState = hivev1.ClusterPowerStateRunning
 	cd.Status.Conditions = []hivev1.ClusterDeploymentCondition{
 		{
 			Type:   hivev1.ClusterHibernatingCondition,
 			Status: corev1.ConditionFalse,
-			Reason: hivev1.ResumingOrRunningHibernationReason,
+			Reason: hivev1.HibernatingReasonHibernating,
 		},
 	}
 
@@ -273,15 +279,15 @@ func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 	return cd
 }
 
-// return a hibernating ClusterDeployment with Spec.PowerState == hivev1.HibernatingClusterPowerState
+// return a hibernating ClusterDeployment with Spec.PowerState == hivev1.ClusterPowerStateHibernating
 func hibernatingClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
-	cd.Spec.PowerState = hivev1.HibernatingClusterPowerState
+	cd.Spec.PowerState = hivev1.ClusterPowerStateHibernating
 	cd.Status.Conditions = []hivev1.ClusterDeploymentCondition{
 		{
 			Type:   hivev1.ClusterHibernatingCondition,
 			Status: corev1.ConditionTrue,
-			Reason: hivev1.HibernatingHibernationReason,
+			Reason: hivev1.HibernatingReasonHibernating,
 		},
 	}
 
@@ -315,7 +321,7 @@ func deletedNonManagedClusterDeployment() *hivev1.ClusterDeployment {
 }
 
 func TestReconcileClusterDeployment(t *testing.T) {
-	err := dmsapis.AddToScheme(scheme.Scheme)
+	err := deadmanssnitchv1alpha1.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
 	err = hiveapis.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
@@ -611,28 +617,28 @@ func TestReconcileClusterDeployment(t *testing.T) {
 			// after mocks is defined
 			defer mocks.mockCtrl.Finish()
 
-			rdms := &ReconcileDeadmansSnitchIntegration{
-				client: mocks.fakeKubeClient,
-				scheme: scheme.Scheme,
+			rdms := &DeadmansSnitchIntegrationReconciler{
+				Client: mocks.fakeKubeClient,
+				Scheme: scheme.Scheme,
 				dmsclient: func(apiKey string, collector *localmetrics.MetricsCollector) dmsclient.Client {
 					return mocks.mockDMSClient
 				},
 			}
 
 			// run reconcile multiple times to verify API calls to DMS are minimal
-			_, err1 := rdms.Reconcile(reconcile.Request{
+			_, err1 := rdms.Reconcile(context.TODO(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      testDeadMansSnitchintegrationName,
 					Namespace: config.OperatorNamespace,
 				},
 			})
-			_, err2 := rdms.Reconcile(reconcile.Request{
+			_, err2 := rdms.Reconcile(context.TODO(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      testDeadMansSnitchintegrationName,
 					Namespace: config.OperatorNamespace,
 				},
 			})
-			_, err3 := rdms.Reconcile(reconcile.Request{
+			_, err3 := rdms.Reconcile(context.TODO(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      testDeadMansSnitchintegrationName,
 					Namespace: config.OperatorNamespace,
