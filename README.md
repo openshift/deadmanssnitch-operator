@@ -48,7 +48,7 @@ metadata:
   name: deadmanssnitch-api-key
   namespace: deadmanssnitch-operator
 data:
-  hive-cluster-tag: <Tag for snitches>
+  tags: <Tag for snitches>
   deadmanssnitch-api-key: <deadmanssnitch API key here>
 ```
 
@@ -93,9 +93,9 @@ oc apply -f deploy/role_binding.yaml
 
 Create a secret which will contain the DeadMansSnitch API Key and Hive Cluster Tag.
 
-You will require an API Key signed up to a DeadMansSnitch plan that allows for enhanced snitch intervals (the "Private Eye" plan). You can alternatively test the `deadmanssnitch-oeprator` by signing up to the free tier DeadMansSnitch plan (limited to 1 snitch), but doing so will require you to customize the snitch interval from `15_minute` to `hourly`. This can be performed in [deadmanssnitchintegration_controller.go](pkg/controller/deadmanssnitchintegration/deadmanssnitchintegration_controller.go)
+You will require an API Key signed up to a DeadMansSnitch plan that allows for enhanced snitch intervals (the "Private Eye" plan). You can alternatively test the `deadmanssnitch-operator` by signing up to the free tier DeadMansSnitch plan (limited to 1 snitch), but doing so will require you to customize the snitch interval from `15_minute` to `hourly`. This can be performed in [deadmanssnitchintegration_controller.go](pkg/controller/deadmanssnitchintegration/deadmanssnitchintegration_controller.go)
 
-Adjust the example below and apply the file with `oc apply -f <file>`. Note that the values for `hive-cluster-tag` and `deadmanssnitch-api-key` need to be base64 encoded. This can be performed using `echo -n <text> | base64`.
+Adjust the example below and apply the file with `oc apply -f <file>`. Note that the values for `tags` and `deadmanssnitch-api-key` need to be base64 encoded. This can be performed using `echo -n <text> | base64`.
 
 ```yaml
 apiVersion: v1
@@ -105,7 +105,7 @@ metadata:
   name: deadmanssnitch-api-key
   namespace: deadmanssnitch-operator
 data:
-  hive-cluster-tag: <value>
+  tags: <value>
   deadmanssnitch-api-key: <value>
 ```
 
