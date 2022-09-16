@@ -11,6 +11,7 @@ Operator to manage deadmanssnitch configs for Openshift Dedicated
 ## Overview
 
 The operator runs on hive. It has a single controller. It:
+
 - Requires a master Secret to talk to the Dead Man's Snitch API.
   This secret is expected to be named `deadmanssnitch-api-key` and live in the `deadmanssnitch-operator` namespace.
 - Pays attention to [ClusterDeployments](https://github.com/openshift/hive/blob/master/config/crds/hive.openshift.io_clusterdeployments.yaml) that are:
@@ -34,7 +35,7 @@ metricDeadMansSnitchHeartbeat: Every 5 minutes, makes a request to the Dead Man'
 
 ## Usage
 
-- Create an account on https://deadmanssnitch.com/
+- Create an account on <https://deadmanssnitch.com/>
 - Choose a plan that allows enhanced snitch intervals(Private eye or above)
 - Create an API key
 - Create the following secret which is required for deadmanssnitch-operator to create snitches
@@ -47,7 +48,7 @@ metadata:
   name: deadmanssnitch-api-key
   namespace: deadmanssnitch-operator
 data:
-  hive-cluster-tag: <Tag for snitches>
+  tags: <Tag for snitches>
   deadmanssnitch-api-key: <deadmanssnitch API key here>
 ```
 
@@ -64,6 +65,7 @@ data:
 ### Set up local OpenShift cluster
 
 Methods include:
+
 - [MiniShift](https://github.com/minishift/minishift)
 - [Code Ready Containers](https://developers.redhat.com/products/codeready-containers/overview)
 - [Integration OpenShift Cluster Manager](https://qaprodauth.cloud.redhat.com/openshift/?env=integration)
@@ -75,25 +77,25 @@ Methods include:
 Clone [hive repo](https://github.com/openshift/hive/) and run
 
 ```terminal
-$ git clone https://github.com/openshift/hive.git
-$ oc apply -f hive/config/crds
+git clone https://github.com/openshift/hive.git
+oc apply -f hive/config/crds
 ```
 
 Install the `DeadMansSnitchIntegration` CRD, create the operator namespace and other operator dependencies:
 
 ```terminal
-$ oc apply -f deploy/crds/deadmanssnitch.managed.openshift.io_deadmanssnitchintegrations_crd.yaml
-$ oc new-project deadmanssnitch-operator
-$ oc apply -f deploy/role.yaml
-$ oc apply -f deploy/service_account.yaml
-$ oc apply -f deploy/role_binding.yaml
+oc apply -f deploy/crds/deadmanssnitch.managed.openshift.io_deadmanssnitchintegrations.yaml
+oc new-project deadmanssnitch-operator
+oc apply -f deploy/role.yaml
+oc apply -f deploy/service_account.yaml
+oc apply -f deploy/role_binding.yaml
 ```
 
 Create a secret which will contain the DeadMansSnitch API Key and Hive Cluster Tag.
 
-You will require an API Key signed up to a DeadMansSnitch plan that allows for enhanced snitch intervals (the "Private Eye" plan). You can alternatively test the `deadmanssnitch-oeprator` by signing up to the free tier DeadMansSnitch plan (limited to 1 snitch), but doing so will require you to customize the snitch interval from `15_minute` to `hourly`. This can be performed in [deadmanssnitchintegration_controller.go](pkg/controller/deadmanssnitchintegration/deadmanssnitchintegration_controller.go)
+You will require an API Key signed up to a DeadMansSnitch plan that allows for enhanced snitch intervals (the "Private Eye" plan). You can alternatively test the `deadmanssnitch-operator` by signing up to the free tier DeadMansSnitch plan (limited to 1 snitch), but doing so will require you to customize the snitch interval from `15_minute` to `hourly`. This can be performed in [deadmanssnitchintegration_controller.go](pkg/controller/deadmanssnitchintegration/deadmanssnitchintegration_controller.go)
 
-Adjust the example below and apply the file with `oc apply -f <file>`. Note that the values for `hive-cluster-tag` and `deadmanssnitch-api-key` need to be base64 encoded. This can be performed using `echo -n <text> | base64`.
+Adjust the example below and apply the file with `oc apply -f <file>`. Note that the values for `tags` and `deadmanssnitch-api-key` need to be base64 encoded. This can be performed using `echo -n <text> | base64`.
 
 ```yaml
 apiVersion: v1
@@ -103,7 +105,7 @@ metadata:
   name: deadmanssnitch-api-key
   namespace: deadmanssnitch-operator
 data:
-  hive-cluster-tag: <value>
+  tags: <value>
   deadmanssnitch-api-key: <value>
 ```
 
@@ -142,8 +144,8 @@ spec:
 ### Run the operator
 
 ```terminal
-$ export OPERATOR_NAME=deadmanssnitch-operator
-$ go run cmd/manager/main.go
+export OPERATOR_NAME=deadmanssnitch-operator
+go run main.go
 ```
 
 ### Create Clusterdeployment
@@ -162,14 +164,15 @@ $ oc apply -f /tmp/fake-clusterdeployment.yaml
 `deadmanssnitch-operator` doesn't start reconciling clusters until the `clusterdeployment`'s `spec.installed` is set to `true`. If present, set `spec.installed` to true.
 
 ```terminal
-$ oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
+oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
 ```
 
 Ensure that the ClusterDeployment is labelled with the label from your `DMSI`'s `clusterDeploymentSelector` clause.
 
 Using the example from earlier:
+
 ```terminal
-$ oc label clusterdeployment -n <namespace> <cdname> api.openshift.com/test=true
+oc label clusterdeployment -n <namespace> <cdname> api.openshift.com/test=true
 ```
 
 ### Delete ClusterDeployment
@@ -177,13 +180,13 @@ $ oc label clusterdeployment -n <namespace> <cdname> api.openshift.com/test=true
 To trigger `deadmanssnitch-operator` to remove the service in DeadMansSnitch, you can either delete the `clusterdeployment` or remove the `clusterDeploymentSelector` label:
 
 ```terminal
-$ oc delete clusterdeployment fake-cluster -n fake-cluster-namespace
+oc delete clusterdeployment fake-cluster -n fake-cluster-namespace
 ```
 
 If deleting the `clusterdeployment`, you may need to remove dangling finalizers from the `clusterdeployment` object.
 
 ```terminal
-$ oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
+oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
 ```
 
 </p>
