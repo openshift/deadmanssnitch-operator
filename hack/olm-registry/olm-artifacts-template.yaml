@@ -83,10 +83,6 @@ objects:
       - key: api.openshift.com/channel-group
         operator: NotIn
         values: ["nightly"]
-      # ignore CD w/ limited-support label
-      - key: api.openshift.com/limited-support
-        operator: NotIn
-        values: ["true"]
     targetSecretRef:
       name: dms-secret
       namespace: openshift-monitoring
