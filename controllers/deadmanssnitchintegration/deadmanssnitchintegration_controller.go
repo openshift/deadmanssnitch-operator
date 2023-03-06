@@ -291,10 +291,10 @@ func (r *DeadmansSnitchIntegrationReconciler) dmsAddFinalizer(dmsi *deadmanssnit
 			return err
 		}
 	}
-	logger.Info("Cluster deployment finalizer created nothing to do here ...: ")
+	logger.V(1).Info("Cluster deployment finalizer created nothing to do here ...: ")
 
 	//checking i finalizers exits in the dmsi cr adding if they dont
-	logger.Info("Checking for finalizers")
+	logger.V(1).Info("Checking for finalizers")
 	if !utils.HasFinalizer(dmsi, deadMansSnitchFinalizer) {
 		log.Info(fmt.Sprint("Adding finalizer to DMSI Name: ", " DMSI Name: :"+dmsi.Name))
 		utils.AddFinalizer(dmsi, deadMansSnitchFinalizer)
@@ -304,7 +304,7 @@ func (r *DeadmansSnitchIntegrationReconciler) dmsAddFinalizer(dmsi *deadmanssnit
 		}
 
 	}
-	logger.Info("DMSI finalizer created nothing to do here..: ")
+	logger.V(1).Info("DMSI finalizer created nothing to do here..: ")
 
 	return nil
 
@@ -324,7 +324,7 @@ func (r *DeadmansSnitchIntegrationReconciler) createSnitch(dmsi *deadmanssnitchv
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: ssName, Namespace: cd.Namespace}, &hivev1.SyncSet{})
 	if err != nil {
 		if k8errors.IsNotFound(err) {
-			logger.Info(fmt.Sprint("Checking if snitch already exists SnitchName:", snitchName))
+			logger.V(1).Info(fmt.Sprint("Checking if snitch already exists SnitchName:", snitchName))
 			snitches, err := dmsc.FindSnitchesByName(snitchName)
 			if err != nil {
 				return err
@@ -369,7 +369,7 @@ func (r *DeadmansSnitchIntegrationReconciler) createSnitch(dmsi *deadmanssnitchv
 		}
 	}
 
-	logger.Info("Snitch created nothing to do here.... ")
+	logger.V(1).Info("Snitch created nothing to do here.... ")
 	return nil
 }
 
@@ -403,7 +403,7 @@ func (r *DeadmansSnitchIntegrationReconciler) snitchResourcesExist(dmsi *deadman
 func (r *DeadmansSnitchIntegrationReconciler) createSecret(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, dmsc dmsclient.Client, cd hivev1.ClusterDeployment) error {
 	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
 	dmsSecret := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
-	logger.Info("Checking if secret already exits")
+	logger.V(1).Info("Checking if secret already exits")
 	err := r.Client.Get(context.TODO(),
 		types.NamespacedName{Name: dmsSecret, Namespace: cd.Namespace},
 		&corev1.Secret{})
@@ -438,7 +438,7 @@ func (r *DeadmansSnitchIntegrationReconciler) createSecret(dmsi *deadmanssnitchv
 
 		}
 	}
-	logger.Info("Secret created, nothing to do here...")
+	logger.V(1).Info("Secret created, nothing to do here...")
 	return nil
 }
 
@@ -463,7 +463,7 @@ func (r *DeadmansSnitchIntegrationReconciler) createSyncset(dmsi *deadmanssnitch
 		logger.Info("Done creating a new SyncSet")
 
 	} else {
-		logger.Info("SyncSet Already Present, nothing to do here...")
+		logger.V(1).Info("SyncSet Already Present, nothing to do here...")
 		// return directly if the syscset already existed
 
 	}
