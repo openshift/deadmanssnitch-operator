@@ -399,7 +399,7 @@ func (r *DeadmansSnitchIntegrationReconciler) snitchResourcesExist(dmsi *deadman
 	return secretExist, syncSetExist, nil
 }
 
-//Create secret containing the snitch url
+// Create secret containing the snitch url
 func (r *DeadmansSnitchIntegrationReconciler) createSecret(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, dmsc dmsclient.Client, cd hivev1.ClusterDeployment) error {
 	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
 	dmsSecret := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
@@ -442,7 +442,7 @@ func (r *DeadmansSnitchIntegrationReconciler) createSecret(dmsi *deadmanssnitchv
 	return nil
 }
 
-//creating the syncset which contain the secret with the snitch url
+// creating the syncset which contain the secret with the snitch url
 func (r *DeadmansSnitchIntegrationReconciler) createSyncset(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, cd hivev1.ClusterDeployment) error {
 	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
 	ssName := utils.SecretName(cd.Spec.ClusterName, dmsi.Spec.SnitchNamePostFix)
