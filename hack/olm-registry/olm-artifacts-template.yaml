@@ -26,6 +26,8 @@ objects:
     name: deadmanssnitch-operator-catalog
   spec:
     sourceType: grpc
+    grpcPodConfig:
+      securityContextConfig: restricted
     image: ${REPO_DIGEST}
     displayName: deadmanssnitch-operator Registry
     publisher: SRE
