@@ -1,13 +1,9 @@
 reviewers:
 - robotmaxtron
-- jewzaam
 - rafael-azevedo
-- mwoodson
 approvers:
 - robotmaxtron
-- jewzaam
 - rafael-azevedo
-- mwoodson
 maintainers:
-- jewzaam
-- mwoodson
+- rafael-azevedo
+- robotmaxtron
