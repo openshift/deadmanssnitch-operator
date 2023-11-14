@@ -85,6 +85,9 @@ objects:
       - key: api.openshift.com/channel-group
         operator: NotIn
         values: ["nightly"]
+      - key: api.openshift.com/fedramp
+        operator: In
+        values: ["true"]
       - key: api.openshift.com/environment
         operator: NotIn
         values:

@@ -85,6 +85,9 @@ objects:
       - key: api.openshift.com/channel-group
         operator: NotIn
         values: ["nightly"]
+      - key: api.openshift.com/fedramp
+        operator: NotIn
+        values: ["true"]
     targetSecretRef:
       name: dms-secret
       namespace: openshift-monitoring
