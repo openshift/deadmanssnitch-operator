@@ -86,8 +86,14 @@ objects:
         operator: NotIn
         values: ["nightly"]
       - key: api.openshift.com/fedramp
-        operator: NotIn
+        operator: In
         values: ["true"]
+      - key: api.openshift.com/environment
+        operator: NotIn
+        values:
+          - "integration"
+          - "staging"
+          - "stage"
     targetSecretRef:
       name: dms-secret
       namespace: openshift-monitoring
