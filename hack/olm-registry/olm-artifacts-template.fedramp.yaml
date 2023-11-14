@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: olm-artifacts-template
+
+parameters:
+- name: REGISTRY_IMG
+  required: true
+- name: CHANNEL
+  value: staging
+- name: IMAGE_TAG
+  value: latest
+- name: REPO_DIGEST
+  value: latest
+- name: SILENT_ALERT_LEGALENTITY_IDS
+  value: '["None"]'
+- name: DEADMANSSNITCH_OSD_TAGS
+  required: true
+- name: FEDRAMP
+  value: "false"
+
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: deadmanssnitch-operator-catalog
+  spec:
+    sourceType: grpc
+    grpcPodConfig:
+      securityContextConfig: restricted
+    image: ${REPO_DIGEST}
+    displayName: deadmanssnitch-operator Registry
+    publisher: SRE
+
+- apiVersion: operators.coreos.com/v1alpha2
+  kind: OperatorGroup
+  metadata:
+    name: deadmanssnitch-operator-og
+  spec:
+    targetNamespaces:
+    - deadmanssnitch-operator
+
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: deadmanssnitch-operator
+  spec:
+    channel: ${CHANNEL}
+    name: deadmanssnitch-operator
+    source: deadmanssnitch-operator-catalog
+    sourceNamespace: deadmanssnitch-operator
+    config:
+      env:
+      - name: FEDRAMP
+        value: "${FEDRAMP}"
+
+- apiVersion: deadmanssnitch.managed.openshift.io/v1alpha1
+  kind: DeadmansSnitchIntegration
+  metadata:
+    name: osd
+  spec:
+    snitchNamePostFix: ""
+    dmsAPIKeySecretRef:
+      name: deadmanssnitch-api-key
+      namespace: deadmanssnitch-operator
+    clusterDeploymentSelector:
+      matchExpressions:
+      # only create DMS service for managed (OSD) clusters
+      - key: api.openshift.com/managed
+        operator: In
+        values: ["true"]
+      # ignore CD w/ "legacy" noalerts label
+      - key: api.openshift.com/noalerts
+        operator: NotIn
+        values: ["true"]
+      # ignore CD w/ ext noalerts label
+      - key: ext-managed.openshift.io/noalerts
+        operator: NotIn
+        values: ["true"]
+      # ignore CD for specific organizations
+      - key: api.openshift.com/legal-entity-id
+        operator: NotIn
+        values: ${{SILENT_ALERT_LEGALENTITY_IDS}}
+      # ignore CD for any "nightly" clusters
+      - key: api.openshift.com/channel-group
+        operator: NotIn
+        values: ["nightly"]
+      - key: api.openshift.com/environment
+        operator: NotIn
+        values:
+          - "integration"
+          - "staging"
+          - "stage"
+    targetSecretRef:
+      name: dms-secret
+      namespace: openshift-monitoring
+    tags: ${{DEADMANSSNITCH_OSD_TAGS}}
+    clusterDeploymentAnnotationsToSkip:
+    - name: hive.openshift.io/fake-cluster
+      value: "true"
+    - name: managed.openshift.com/fake
+      value: "true"
