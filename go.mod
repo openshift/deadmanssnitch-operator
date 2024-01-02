@@ -1,6 +1,6 @@
 module github.com/openshift/deadmanssnitch-operator
 
-go 1.17
+go 1.18
 
 require (
 	github.com/go-logr/logr v1.2.3
@@ -11,6 +11,8 @@ require (
 	github.com/operator-framework/operator-lib v0.11.0
 	github.com/prometheus/client_golang v1.13.0
 	github.com/stretchr/testify v1.8.0
+	go.uber.org/mock v0.4.0
+	go.uber.org/zap v1.19.1
 	k8s.io/api v0.24.1
 	k8s.io/apimachinery v0.24.1
 	k8s.io/client-go v0.24.1
@@ -64,11 +66,10 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.8.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
