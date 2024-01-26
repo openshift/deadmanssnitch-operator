@@ -53,6 +53,22 @@ OPERATOR_IMAGE_URI_LATEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):la
 OPERATOR_DOCKERFILE ?=build/Dockerfile
 REGISTRY_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)-registry
 
+ifeq ($(SUPPLEMENTARY_IMAGE_NAME),)
+# We need SUPPLEMENTARY_IMAGE to be defined for csv-generate.mk
+SUPPLEMENTARY_IMAGE=""
+else
+# If the configuration specifies a SUPPLEMENTARY_IMAGE_NAME
+# then append the image registry and generate the image URI.
+SUPPLEMENTARY_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(SUPPLEMENTARY_IMAGE_NAME)
+SUPPLEMENTARY_IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(SUPPLEMENTARY_IMAGE_NAME):${OPERATOR_IMAGE_TAG}
+endif
+
+ifeq ($(EnableOLMSkipRange), true)
+SKIP_RANGE_ENABLED=true
+else
+SKIP_RANGE_ENABLED=false
+endif
+
 # Consumer can optionally define ADDITIONAL_IMAGE_SPECS like:
 #     define ADDITIONAL_IMAGE_SPECS
 #     ./path/to/a/Dockerfile $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/a-image:v1.2.3
@@ -190,6 +206,8 @@ endef
 
 CONTROLLER_GEN = controller-gen
 OPENAPI_GEN = openapi-gen
+KUSTOMIZE = kustomize
+YQ = yq
 
 .PHONY: op-generate
 ## CRD v1beta1 is no longer supported.
@@ -208,8 +226,18 @@ openapi-generate:
 			-h /dev/null \
 			-r "-"
 
+.PHONY: manifests
+manifests:
+# Only use kustomize to template out manifests if the path config/default exists
+ifneq (,$(wildcard config/default))
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(KUSTOMIZE) build config/default | $(YQ) -s '"deploy/" + .metadata.name + "." + .kind + ".yaml"'
+else
+	$(info Did not find 'config/default' - skipping kustomize manifest generation)
+endif
+
 .PHONY: generate
-generate: op-generate go-generate openapi-generate
+generate: op-generate go-generate openapi-generate manifests
 
 ifeq (${FIPS_ENABLED}, true)
 go-build: ensure-fips

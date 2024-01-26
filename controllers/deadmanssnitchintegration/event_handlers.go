@@ -73,6 +73,7 @@ func (e *enqueueRequestForClusterDeployment) toRequests(obj client.Object) []rec
 	}
 
 	for _, dmi := range dmiList.Items {
+		dmi := dmi
 		selector, err := metav1.LabelSelectorAsSelector(&dmi.Spec.ClusterDeploymentSelector)
 		if err != nil {
 			continue
@@ -169,6 +170,7 @@ func (e *enqueueRequestForClusterDeploymentOwner) getAssociatedDeadmansSnitchInt
 	}
 
 	for _, dmi := range dmiList.Items {
+		dmi := dmi
 		selector, err := metav1.LabelSelectorAsSelector(&dmi.Spec.ClusterDeploymentSelector)
 		if err != nil {
 			log.Error(err, "could not build ClusterDeployment label selector")
