@@ -310,7 +310,7 @@ func (r *DeadmansSnitchIntegrationReconciler) dmsAddFinalizer(dmsi *deadmanssnit
 
 }
 
-// create snitch in deadmanssnitch.com with information retrived from dmsi cr as well as the matching cluster deployment
+// create snitch in deadmanssnitch.com with information retrieved from dmsi cr as well as the matching cluster deployment
 func (r *DeadmansSnitchIntegrationReconciler) createSnitch(dmsi *deadmanssnitchv1alpha1.DeadmansSnitchIntegration, cd *hivev1.ClusterDeployment, dmsc dmsclient.Client) error {
 	logger := log.WithValues("DeadMansSnitchIntegration.Namespace", dmsi.Namespace, "DMSI.Name", dmsi.Name, "cluster-deployment.Name:", cd.Name, "cluster-deployment.Namespace:", cd.Namespace)
 
