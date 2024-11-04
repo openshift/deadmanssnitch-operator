@@ -4,6 +4,8 @@ reviewers:
 approvers:
 - robotmaxtron
 - rafael-azevedo
+- srep-functional-leads
+- srep-team-leads
 maintainers:
 - rafael-azevedo
 - robotmaxtron
