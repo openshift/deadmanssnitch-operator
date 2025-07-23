@@ -23,7 +23,6 @@ import (
 	hivev1 "github.com/openshift/hive/apis/hive/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -73,7 +72,7 @@ type mocks struct {
 }
 
 // setupDefaultMocks is an easy way to setup all of the default mocks
-func setupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
+func setupDefaultMocks(t *testing.T, localObjects []k8sruntime.Object) *mocks {
 	fakeScheme := k8sruntime.NewScheme()
 	utilruntime.Must(routev1.Install(fakeScheme))
 	utilruntime.Must(hivev1.AddToScheme(fakeScheme))
@@ -274,7 +273,7 @@ func deletedClusterDeployment() *hivev1.ClusterDeployment {
 func uninstalledClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
 	cd.Spec.Installed = false
-	cd.ObjectMeta.Finalizers = nil // operator will not have set a finalizer if it was never installed
+	cd.Finalizers = nil // operator will not have set a finalizer if it was never installed
 
 	return cd
 }
@@ -297,8 +296,8 @@ func hibernatingClusterDeployment() *hivev1.ClusterDeployment {
 // return a ClusterDeployment with Label["managed"] == false
 func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
-	cd.ObjectMeta.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
-	cd.ObjectMeta.Finalizers = nil // won't have a finalizer if it is non-managed
+	cd.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
+	cd.Finalizers = nil // won't have a finalizer if it is non-managed
 
 	return cd
 }
@@ -306,14 +305,14 @@ func nonManagedClusterDeployment() *hivev1.ClusterDeployment {
 // return a ClusterDeployment with Label["managed"] == false and a DMS finalizer
 func nonManagedDMSClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
-	cd.ObjectMeta.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
+	cd.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
 	return cd
 }
 
 // return a deleted ClusterDeployment with Label["managed"] == false, and a DMS finalizer
 func deletedNonManagedClusterDeployment() *hivev1.ClusterDeployment {
 	cd := testClusterDeployment()
-	cd.ObjectMeta.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
+	cd.Labels = map[string]string{config.ClusterDeploymentManagedLabel: "false"}
 	now := metav1.Now()
 	cd.DeletionTimestamp = &now
 
@@ -327,7 +326,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 	assert.NoError(t, err)
 	tests := []struct {
 		name             string
-		localObjects     []runtime.Object
+		localObjects     []k8sruntime.Object
 		expectedSyncSets *SyncSetEntry
 		expectedSecret   *SecretEntry
 		verifySyncSets   func(client.Client, *SyncSetEntry) bool
@@ -336,7 +335,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 	}{
 		{
 			name: "Test Creating",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testClusterDeployment(),
 				testSecret(),
 				testDeadMansSnitchIntegration(),
@@ -369,7 +368,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Deleting",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testSecret(),
 				deletedClusterDeployment(),
 				testDeadMansSnitchIntegration(),
@@ -390,7 +389,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test ClusterDeployment Spec.Installed == false",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testSecret(),
 				uninstalledClusterDeployment(),
 				testDeadMansSnitchIntegration(),
@@ -409,7 +408,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Hibernation",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				hibernatingClusterDeployment(),
 				testSecret(),
 				testSecretRef(),
@@ -442,7 +441,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Non managed ClusterDeployment",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testSecret(),
 				nonManagedClusterDeployment(),
 				testDeadMansSnitchIntegration(),
@@ -461,7 +460,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Non managed ClusterDeployment with DMS",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testSecret(),
 				nonManagedDMSClusterDeployment(),
 				testDeadMansSnitchIntegration(),
@@ -482,7 +481,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Deleted Non managed ClusterDeployment",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testSecret(),
 				deletedNonManagedClusterDeployment(),
 				testDeadMansSnitchIntegration(),
@@ -503,7 +502,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Empty postfix",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testClusterDeployment(),
 				testSecret(),
 				testDeadMansSnitchIntegrationEmptyPostfix(),
@@ -536,7 +535,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Skip with Fake cluster",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testSecret(),
 				testDeadMansSnitchIntegrationWithSkips(),
 				testFakeClusterDeployment(),
@@ -555,7 +554,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Skip with Other Fake cluster",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testSecret(),
 				testDeadMansSnitchIntegrationWithSkips(),
 				testOtherFakeClusterDeployment(),
@@ -574,7 +573,7 @@ func TestReconcileClusterDeployment(t *testing.T) {
 		},
 		{
 			name: "Test Skip with normal cluster",
-			localObjects: []runtime.Object{
+			localObjects: []k8sruntime.Object{
 				testSecret(),
 				testDeadMansSnitchIntegrationWithSkips(),
 				testClusterDeployment(),
