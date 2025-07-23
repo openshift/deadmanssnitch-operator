@@ -121,7 +121,7 @@ func (c *dmsClient) do(req *http.Request, operation string) (*http.Response, err
 
 	if err != nil {
 		c.metricsCollector.ObserveSnitchCallError()
-		return resp, fmt.Errorf("Error calling the API endpoint: %v", err)
+		return resp, fmt.Errorf("error calling the API endpoint: %v", err)
 	}
 
 	return resp, nil
@@ -142,7 +142,7 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 	var snitches []Snitch
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitches)
 	if decodeErr != nil {
-		err = fmt.Errorf("Error listing all snitches: %v", decodeErr)
+		err = fmt.Errorf("error listing all snitches: %v", decodeErr)
 	}
 
 	return snitches, err
@@ -165,7 +165,7 @@ func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitch)
 	if decodeErr != nil {
-		err = fmt.Errorf("Error listing snitch: %v", decodeErr)
+		err = fmt.Errorf("error listing snitch: %v", decodeErr)
 	}
 	return snitch, err
 }
@@ -186,7 +186,7 @@ func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitch)
 	if decodeErr != nil {
-		err = fmt.Errorf("Error creating snitch: %v", decodeErr)
+		err = fmt.Errorf("error creating snitch: %v", decodeErr)
 	}
 	return snitch, err
 }

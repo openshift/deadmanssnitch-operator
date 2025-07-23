@@ -583,7 +583,7 @@ func (r *DeadmansSnitchIntegrationReconciler) deleteDMSClusterDeployment(dmsi *d
 // Returns internal clusterID for fedramp and external clusterID if not
 func getClusterID(cd hivev1.ClusterDeployment, isFedramp bool) (string, error) {
 	if cd.Spec.ClusterMetadata == nil || cd.Spec.ClusterMetadata.ClusterID == "" {
-		return "", errors.New("Unable to get ClusterID from ClusterDeployment")
+		return "", errors.New("unable to get ClusterID from ClusterDeployment")
 	}
 
 	clusterID := cd.Spec.ClusterMetadata.ClusterID

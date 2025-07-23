@@ -43,8 +43,8 @@ func DeleteFinalizer(object metav1.Object, finalizer string) {
 func CheckClusterDeployment(request reconcile.Request, client client.Client, reqLogger logr.Logger) (bool, *hivev1.ClusterDeployment, error) {
 
 	// remove SyncSetPostfix from name to lookup the ClusterDeployment
-	cdName := strings.Replace(request.NamespacedName.Name, config.SyncSetPostfix, "", 1)
-	cdNamespace := request.NamespacedName.Namespace
+	cdName := strings.Replace(request.Name, config.SyncSetPostfix, "", 1)
+	cdNamespace := request.Namespace
 
 	clusterDeployment := &hivev1.ClusterDeployment{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: cdName, Namespace: cdNamespace}, clusterDeployment)
