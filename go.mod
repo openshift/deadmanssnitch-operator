@@ -1,6 +1,8 @@
 module github.com/openshift/deadmanssnitch-operator
 
-go 1.20
+go 1.23.6
+
+toolchain go1.23.9
 
 require (
 	github.com/go-logr/logr v1.4.1
