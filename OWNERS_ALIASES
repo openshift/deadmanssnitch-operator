@@ -41,7 +41,6 @@ aliases:
     - rolandmkunkel
     - petrkotas
     - zmird-r
-    - evlin-rh
     - hectorakemp
   srep-functional-team-rocket:
     - aliceh
@@ -71,9 +70,7 @@ aliases:
     - Tessg22
     - smarthall
   srep-infra-cicd:
-    - mmazur
     - ritmun
-    - jbpratt
     - yiqinzhang
     - varunraokadaparthi
   srep-functional-leads:
@@ -89,7 +86,6 @@ aliases:
     - iamkirkbater
     - rogbas
     - dustman9000
-    - wanghaoran1988
     - bng0y
     - bmeng
     - typeid
