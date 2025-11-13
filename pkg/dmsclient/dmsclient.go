@@ -148,7 +148,7 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 	return snitches, err
 }
 
-//List a single snitch
+// List a single snitch
 func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 	var snitch Snitch
 
