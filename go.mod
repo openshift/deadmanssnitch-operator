@@ -6,14 +6,13 @@ toolchain go1.23.9
 
 require (
 	github.com/go-logr/logr v1.4.1
-	github.com/golang/mock v1.6.0
 	// go get -u github.com/openshift/api@relase-4.13
 	github.com/openshift/api v0.0.0-20230228142948-d170fcdc0fa6
 	github.com/openshift/hive/apis v0.0.0-20230314202213-17cb22fc3d7c
 	github.com/openshift/operator-custom-metrics v0.5.1
 	github.com/operator-framework/operator-lib v0.11.0
 	github.com/prometheus/client_golang v1.18.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.24.0
 	k8s.io/api v0.26.13
 	k8s.io/apimachinery v0.26.13
@@ -21,6 +20,8 @@ require (
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
 	sigs.k8s.io/controller-runtime v0.14.7
 )
+
+require go.uber.org/mock v0.6.0
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

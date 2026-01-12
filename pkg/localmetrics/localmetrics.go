@@ -113,9 +113,13 @@ func (m *MetricsCollector) ObserveSnitchCallError() {
 
 // resourceFrom normalizes an API request URL, including removing individual namespace and
 // resource names, to yield a string of the form:
-//     $group/$version/$kind[/{NAME}[/...]]
+//
+//	$group/$version/$kind[/{NAME}[/...]]
+//
 // or
-//     $group/$version/namespaces/{NAMESPACE}/$kind[/{NAME}[/...]]
+//
+//	$group/$version/namespaces/{NAMESPACE}/$kind[/{NAME}[/...]]
+//
 // ...where $foo is variable, {FOO} is actually {FOO}, and [foo] is optional.
 // This is so we can use it as a dimension for the apiCallCount metric, without ending up
 // with separate labels for each {namespace x name}.

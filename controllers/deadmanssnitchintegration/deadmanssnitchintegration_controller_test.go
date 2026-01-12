@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/mock/gomock"
 	routev1 "github.com/openshift/api/route/v1"
 	deadmanssnitchv1alpha1 "github.com/openshift/deadmanssnitch-operator/api/v1alpha1"
 	"github.com/openshift/deadmanssnitch-operator/pkg/localmetrics"
+	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 

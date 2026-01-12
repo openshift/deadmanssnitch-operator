@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1alpha1 contains API Schema definitions for the deadmanssnitch.managed.openshift.io v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=deadmanssnitch.managed.openshift.io
+// +kubebuilder:object:generate=true
+// +groupName=deadmanssnitch.managed.openshift.io
 package v1alpha1
 
 import (
