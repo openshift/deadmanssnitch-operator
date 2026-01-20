@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deadmanssnitch-operator
+  annotations:
+    package-operator.run/phase: deploy
+    package-operator.run/collision-protection: IfNoController
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: deadmanssnitch-operator
+  template:
+    metadata:
+      labels:
+        name: deadmanssnitch-operator
+    spec:
+      serviceAccountName: deadmanssnitch-operator
+      containers:
+      - name: deadmanssnitch-operator
+        image: '{{ .config.image }}'
+        command:
+        - deadmanssnitch-operator
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: 1G
+            cpu: 100m
+          limits:
+            memory: 2G
+            cpu: 200m
+        env:
+        - name: WATCH_NAMESPACE
+          value: ''
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: OPERATOR_NAME
+          value: deadmanssnitch-operator
+        - name: FEDRAMP
+          value: 'false'
