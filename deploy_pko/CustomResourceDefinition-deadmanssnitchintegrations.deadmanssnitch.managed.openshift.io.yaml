@@ -1,0 +1,182 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.4
+    package-operator.run/phase: crds
+    package-operator.run/collision-protection: IfNoController
+  name: deadmanssnitchintegrations.deadmanssnitch.managed.openshift.io
+spec:
+  group: deadmanssnitch.managed.openshift.io
+  names:
+    kind: DeadmansSnitchIntegration
+    listKind: DeadmansSnitchIntegrationList
+    plural: deadmanssnitchintegrations
+    shortNames:
+    - dmsi
+    singular: deadmanssnitchintegration
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: DeadmansSnitchIntegration is the Schema for the deadmanssnitchintegrations
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object.
+
+              Servers should convert recognized schemas to the latest internal value,
+              and
+
+              may reject unrecognized values.
+
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents.
+
+              Servers may infer this from the endpoint the client submits requests
+              to.
+
+              Cannot be updated.
+
+              In CamelCase.
+
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DeadmansSnitchIntegrationSpec defines the desired state of
+              DeadmansSnitchIntegration
+            properties:
+              clusterDeploymentAnnotationsToSkip:
+                description: a list of annotations the operator to skip
+                items:
+                  description: 'ClusterDeploymentAnnotationsToSkip contains a list
+                    of annotation keys and values
+
+                    The operator will skip the cluster deployment if it has the same
+                    annotations set'
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
+              clusterDeploymentSelector:
+                description: a label selector used to find which clusterdeployment
+                  CRs receive a DMS integration based on this configuration
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: 'A label selector requirement is a selector that
+                        contains values, a key, and an operator that
+
+                        relates the key and values.'
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: 'operator represents a key''s relationship
+                            to a set of values.
+
+                            Valid operators are In, NotIn, Exists and DoesNotExist.'
+                          type: string
+                        values:
+                          description: 'values is an array of string values. If the
+                            operator is In or NotIn,
+
+                            the values array must be non-empty. If the operator is
+                            Exists or DoesNotExist,
+
+                            the values array must be empty. This array is replaced
+                            during a strategic
+
+                            merge patch.'
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: 'matchLabels is a map of {key,value} pairs. A single
+                      {key,value} in the matchLabels
+
+                      map is equivalent to an element of matchExpressions, whose key
+                      field is "key", the
+
+                      operator is "In", and the values array contains only "value".
+                      The requirements are ANDed.'
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+              dmsAPIKeySecretRef:
+                description: reference to the secret containing deadmanssnitch-api-key
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              snitchNamePostFix:
+                description: The postfix to append to any snitches managed by this
+                  integration.  I.e. "osd" or "rhmi"
+                type: string
+              tags:
+                description: Array of strings that are applied to the service created
+                  in DMS
+                items:
+                  type: string
+                type: array
+              targetSecretRef:
+                description: name and namespace in the target cluster where the secret
+                  is synced
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+            required:
+            - clusterDeploymentSelector
+            - dmsAPIKeySecretRef
+            - targetSecretRef
+            type: object
+          status:
+            description: DeadmansSnitchIntegrationStatus defines the observed state
+              of DeadmansSnitchIntegration
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

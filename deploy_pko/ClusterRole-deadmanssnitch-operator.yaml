@@ -1,0 +1,71 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: deadmanssnitch-operator
+  annotations:
+    package-operator.run/phase: rbac
+    package-operator.run/collision-protection: IfNoController
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  - services
+  - endpoints
+  - persistentvolumeclaims
+  - events
+  - configmaps
+  - secrets
+  verbs:
+  - '*'
+- apiGroups:
+  - ''
+  resources:
+  - namespaces
+  verbs:
+  - get
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  verbs:
+  - '*'
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - get
+  - create
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterdeployments
+  - clusterdeployments/finalizers
+  - clusterdeployments/status
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - syncsets
+  verbs:
+  - '*'
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - '*'
+- apiGroups:
+  - deadmanssnitch.managed.openshift.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
