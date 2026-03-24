@@ -16,6 +16,17 @@ parameters:
     value: deadmanssnitch-operator
     required: true
     description: Repository name used for resource naming
+  - name: SILENT_ALERT_LEGALENTITY_IDS
+    value: '[]'
+    required: false
+    description: Legal entity IDs to exclude from monitoring
+  - name: DEADMANSSNITCH_OSD_TAGS
+    required: true
+    description: Tags to apply to Dead Man's Snitch integrations
+  - name: FEDRAMP
+    value: "false"
+    required: false
+    description: Enable FedRAMP mode
 objects:
   - apiVersion: package-operator.run/v1alpha1
     kind: ClusterPackage
@@ -27,3 +38,6 @@ objects:
       image: ${PKO_IMAGE}:${IMAGE_TAG}
       config:
         image: ${OPERATOR_IMAGE}:${IMAGE_TAG}
+        silentAlertLegalEntityIds: ${{SILENT_ALERT_LEGALENTITY_IDS}}
+        deadmanssnitchOsdTags: ${{DEADMANSSNITCH_OSD_TAGS}}
+        fedramp: ${FEDRAMP}

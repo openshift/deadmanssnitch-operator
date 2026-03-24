@@ -14,6 +14,7 @@ spec:
   - name: namespace
   - name: rbac
   - name: deploy
+  - name: integrations
   availabilityProbes:
   - probes:
     - condition:
@@ -33,4 +34,20 @@ spec:
           description: Operator image to deploy
           type: string
           default: None
+        silentAlertLegalEntityIds:
+          description: Legal entity IDs to exclude from Dead Man's Snitch monitoring
+          type: array
+          items:
+            type: string
+          default: []
+        deadmanssnitchOsdTags:
+          description: Tags to apply to OSD Dead Man's Snitch integrations
+          type: array
+          items:
+            type: string
+          default: []
+        fedramp:
+          description: Enable FedRAMP mode
+          type: string
+          default: "false"
       type: object
