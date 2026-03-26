@@ -6,3 +6,4 @@ metadata:
     openshift.io/workload-monitoring: "true"
   annotations:
     package-operator.run/phase: namespace
+    package-operator.run/collision-protection: IfNoController
