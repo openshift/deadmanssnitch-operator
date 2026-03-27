@@ -26,10 +26,12 @@ spec:
     - key: ext-managed.openshift.io/noalerts
       operator: NotIn
       values: ["true"]
+{{- if .config.silentAlertLegalEntityIds }}
     # ignore CD for specific organizations
     - key: api.openshift.com/legal-entity-id
       operator: NotIn
       values: {{ toJson .config.silentAlertLegalEntityIds }}
+{{- end }}
     # ignore CD for any "nightly" clusters
     - key: api.openshift.com/channel-group
       operator: NotIn
