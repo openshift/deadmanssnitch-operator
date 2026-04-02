@@ -50,3 +50,43 @@ spec:
           type: string
           default: "false"
       type: object
+test:
+  template:
+  - name: default
+    context:
+      package:
+        metadata:
+          name: deadmanssnitch-operator
+          namespace: deadmanssnitch-operator
+      config:
+        image: quay.io/example/deadmanssnitch-operator:test
+        fedramp: "false"
+        silentAlertLegalEntityIds:
+        - "1aV37K1VQv2zSStwSkdwBNOUBGI"
+        - "2Mo8exhgEA5ir1lsVypXUb9v902"
+        deadmanssnitchOsdTags:
+        - "hive-production"
+  - name: empty-silent-ids
+    context:
+      package:
+        metadata:
+          name: deadmanssnitch-operator
+          namespace: deadmanssnitch-operator
+      config:
+        image: quay.io/example/deadmanssnitch-operator:test
+        fedramp: "false"
+        silentAlertLegalEntityIds: []
+        deadmanssnitchOsdTags:
+        - "hive-int"
+  - name: fedramp
+    context:
+      package:
+        metadata:
+          name: deadmanssnitch-operator
+          namespace: deadmanssnitch-operator
+      config:
+        image: quay.io/example/deadmanssnitch-operator:test
+        fedramp: "true"
+        silentAlertLegalEntityIds: []
+        deadmanssnitchOsdTags:
+        - "hive-production"

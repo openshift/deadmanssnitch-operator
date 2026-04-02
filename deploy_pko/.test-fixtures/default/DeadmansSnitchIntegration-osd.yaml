@@ -1,0 +1,57 @@
+---
+apiVersion: deadmanssnitch.managed.openshift.io/v1alpha1
+kind: DeadmansSnitchIntegration
+metadata:
+  name: osd
+  namespace: deadmanssnitch-operator
+  annotations:
+    package-operator.run/phase: integrations
+    package-operator.run/collision-protection: IfNoController
+spec:
+  snitchNamePostFix: ""
+  dmsAPIKeySecretRef:
+    name: deadmanssnitch-api-key
+    namespace: deadmanssnitch-operator
+  clusterDeploymentSelector:
+    matchExpressions:
+    # only create DMS service for managed (OSD) clusters
+    - key: api.openshift.com/managed
+      operator: In
+      values: ["true"]
+    # ignore CD w/ "legacy" noalerts label
+    - key: api.openshift.com/noalerts
+      operator: NotIn
+      values: ["true"]
+    # ignore CD w/ ext noalerts label
+    - key: ext-managed.openshift.io/noalerts
+      operator: NotIn
+      values: ["true"]
+    # ignore CD for specific organizations
+    - key: api.openshift.com/legal-entity-id
+      operator: NotIn
+      values: ["1aV37K1VQv2zSStwSkdwBNOUBGI","2Mo8exhgEA5ir1lsVypXUb9v902"]
+    # ignore CD for any "nightly" clusters
+    - key: api.openshift.com/channel-group
+      operator: NotIn
+      values: ["nightly"]
+    - key: api.openshift.com/fedramp
+      operator: NotIn
+      values: ["true"]
+    # Ignore CD if cluster is in limited support
+    - key: api.openshift.com/limited-support
+      operator: NotIn
+      values: ["true"]
+    # ignore CD if cluster has a support exception,
+    # as we have a dedicated dms integration for supportex that ignores limited support
+    - key: ext-managed.openshift.io/support-exception
+      operator: NotIn
+      values: ["true"]
+  targetSecretRef:
+    name: dms-secret
+    namespace: openshift-monitoring
+  tags: ["hive-production"]
+  clusterDeploymentAnnotationsToSkip:
+  - name: hive.openshift.io/fake-cluster
+    value: "true"
+  - name: managed.openshift.com/fake
+    value: "true"
