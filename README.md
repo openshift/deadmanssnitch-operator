@@ -191,3 +191,56 @@ oc edit clusterdeployment fake-cluster -n fake-cluster-namespace
 
 </p>
 </details>
+
+### PKO Template Testing
+
+The operator is deployed via [Package Operator (PKO)](https://package-operator.run/). The PKO package lives in `deploy_pko/` and includes Go templates (`.gotmpl` files) that are rendered at deploy time using config values from the `ClusterPackage` resource.
+
+#### Two layers of template testing
+
+**1. PKO snapshot tests** (`test.template` in `deploy_pko/manifest.yaml`)
+
+The `manifest.yaml` defines test contexts under `spec.test.template`. Each context provides sample config values that PKO uses to render all `.gotmpl` files. The rendered output is stored as golden files in `deploy_pko/.test-fixtures/`.
+
+Run locally:
+
+```bash
+kubectl-package validate deploy_pko/
+```
+
+If template output has changed, the command fails with a fixture mismatch error and a unified diff:
+
+```
+File mismatch against fixture in DeadmansSnitchIntegration-osd.yaml: Testcase "default"
+--- FIXTURE/DeadmansSnitchIntegration-osd.yaml
++++ ACTUAL/DeadmansSnitchIntegration-osd.yaml
+@@ -28,6 +28,9 @@
+     - key: api.openshift.com/fedramp
+       operator: NotIn
+       values: ["true"]
++    - key: api.openshift.com/some-new-label
++      operator: NotIn
++      values: ["true"]
+```
+
+If the diff reflects an intentional change, regenerate the fixtures:
+
+```bash
+rm -rf deploy_pko/.test-fixtures/
+kubectl-package validate deploy_pko/
+```
+
+Review the regenerated files, then commit the updated `.test-fixtures/` alongside your template change.
+
+**2. Go unit tests** (`pkg/pko/template_test.go`)
+
+Structural validation tests that run via `go test ./pkg/pko/...` as part of the standard CI pipeline. These assert invariants like correct `kind`, phase annotations, and conditional rendering (e.g., `silentAlertLegalEntityIds` omitted when empty).
+
+#### When do I need to update these tests?
+
+| Scenario | Action |
+|----------|--------|
+| Changed a `.gotmpl` file | Regenerate `.test-fixtures/` (delete and re-run `kubectl-package validate`) |
+| Added a new config field to `manifest.yaml` | Add it to the `test.template` contexts |
+| Added a new `.gotmpl` file | Existing test contexts cover it automatically; add new contexts if it has conditional logic |
+| Changed conditional logic | Verify the Go unit tests still pass; add cases for new branches |

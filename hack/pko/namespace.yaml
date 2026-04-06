@@ -1,7 +1,0 @@
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: deadmanssnitch-operator
-  labels:
-    openshift.io/workload-monitoring: "true"
