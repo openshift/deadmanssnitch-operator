@@ -11,8 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	// nolint:staticcheck
-
 	"testing"
 
 	"github.com/openshift/deadmanssnitch-operator/config"
@@ -749,7 +747,7 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 	}
 
 	for _, secret := range secretList.Items {
-		fmt.Printf("secret %v \n", secret)
+		_, _ = fmt.Printf("secret %v \n", secret)
 		if secret.Name == testClusterName+"-"+snitchNamePostFix+"-"+config.RefSecretPostfix {
 			return false
 		}

@@ -85,9 +85,9 @@ func CheckClusterDeployment(request reconcile.Request, client client.Client, req
 }
 
 // DeleteSyncSet deletes a SyncSet
-func DeleteSyncSet(name string, namespace string, client client.Client) error {
+func DeleteSyncSet(ctx context.Context, name string, namespace string, client client.Client) error {
 	syncset := &hivev1.SyncSet{}
-	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, syncset)
+	err := client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, syncset)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -102,7 +102,7 @@ func DeleteSyncSet(name string, namespace string, client client.Client) error {
 
 	// Only delete the syncset, this is just cleanup of the synced secret.
 	// The ClusterDeployment controller manages deletion of the deadmanssnitch serivce.
-	err = client.Delete(context.TODO(), syncset)
+	err = client.Delete(ctx, syncset)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -118,9 +118,9 @@ func DeleteSyncSet(name string, namespace string, client client.Client) error {
 }
 
 // DeleteRefSecret deletes Secret which referenced by SyncSet
-func DeleteRefSecret(name string, namespace string, client client.Client) error {
+func DeleteRefSecret(ctx context.Context, name string, namespace string, client client.Client) error {
 	secret := &corev1.Secret{}
-	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, secret)
+	err := client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, secret)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -135,7 +135,7 @@ func DeleteRefSecret(name string, namespace string, client client.Client) error 
 
 	// Delete the secret
 	log.Info("Deleting Referenced Secret", "Namespace", namespace, "Name", name)
-	err = client.Delete(context.TODO(), secret)
+	err = client.Delete(ctx, secret)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

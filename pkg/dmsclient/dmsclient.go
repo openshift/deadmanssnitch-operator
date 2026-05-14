@@ -2,6 +2,7 @@ package dmsclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,15 +50,9 @@ type Snitch struct {
 	Type        SnitchType `json:"type"`
 }
 
-func defaultURL() *url.URL {
-	url, _ := url.Parse(apiEndpoint)
-	return url
-}
-
 // Client wraps http client
 type dmsClient struct {
 	authToken        string
-	BaseURL          *url.URL
 	httpClient       *http.Client
 	metricsCollector *localmetrics.MetricsCollector
 }
@@ -66,7 +61,6 @@ type dmsClient struct {
 func NewClient(authToken string, collector *localmetrics.MetricsCollector) Client {
 	return &dmsClient{
 		authToken:        authToken,
-		BaseURL:          defaultURL(),
 		httpClient:       http.DefaultClient,
 		metricsCollector: collector,
 	}
@@ -82,9 +76,10 @@ func NewSnitch(name string, tags []string, interval string, alertType string) Sn
 	}
 }
 
-func (c *dmsClient) newRequest(method, path string, body interface{}) (*http.Request, error) {
+func (c *dmsClient) newRequest(ctx context.Context, method, path string, body interface{}) (*http.Request, error) {
+	base, _ := url.Parse(apiEndpoint)
 	rel := &url.URL{Path: path}
-	u := c.BaseURL.ResolveReference(rel)
+	u := base.ResolveReference(rel)
 	var buf io.ReadWriter
 
 	if body != nil {
@@ -94,7 +89,7 @@ func (c *dmsClient) newRequest(method, path string, body interface{}) (*http.Req
 			return nil, err
 		}
 	}
-	req, err := http.NewRequest(method, u.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +107,7 @@ func (c *dmsClient) do(req *http.Request, operation string) (*http.Response, err
 	defer func() {
 		c.metricsCollector.ObserveSnitchCallDuration(time.Since(start).Seconds(), operation)
 	}()
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // #nosec G107 G704
 
 	// raise an error if unable to authenticate to DMS service
 	if resp.StatusCode == 401 {
@@ -121,7 +116,7 @@ func (c *dmsClient) do(req *http.Request, operation string) (*http.Response, err
 
 	if err != nil {
 		c.metricsCollector.ObserveSnitchCallError()
-		return resp, fmt.Errorf("error calling the API endpoint: %v", err)
+		return resp, fmt.Errorf("error calling the API endpoint: %w", err)
 	}
 
 	return resp, nil
@@ -129,7 +124,7 @@ func (c *dmsClient) do(req *http.Request, operation string) (*http.Response, err
 
 // ListAll snitches
 func (c *dmsClient) ListAll() ([]Snitch, error) {
-	req, err := c.newRequest("GET", "/v1/snitches", nil)
+	req, err := c.newRequest(context.Background(), "GET", "/v1/snitches", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -138,11 +133,12 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = resp.Body.Close() }()
 
 	var snitches []Snitch
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitches)
 	if decodeErr != nil {
-		err = fmt.Errorf("error listing all snitches: %v", decodeErr)
+		err = fmt.Errorf("error listing all snitches: %w", decodeErr)
 	}
 
 	return snitches, err
@@ -152,7 +148,7 @@ func (c *dmsClient) ListAll() ([]Snitch, error) {
 func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 	var snitch Snitch
 
-	req, err := c.newRequest("GET", "/v1/snitches/"+snitchToken, nil)
+	req, err := c.newRequest(context.Background(), "GET", "/v1/snitches/"+snitchToken, nil)
 	if err != nil {
 		return snitch, err
 	}
@@ -161,11 +157,11 @@ func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 	if err != nil {
 		return snitch, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitch)
 	if decodeErr != nil {
-		err = fmt.Errorf("error listing snitch: %v", decodeErr)
+		err = fmt.Errorf("error listing snitch: %w", decodeErr)
 	}
 	return snitch, err
 }
@@ -173,7 +169,7 @@ func (c *dmsClient) List(snitchToken string) (Snitch, error) {
 // Create a snitch
 func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 	var snitch Snitch
-	req, err := c.newRequest("POST", "/v1/snitches", newSnitch)
+	req, err := c.newRequest(context.Background(), "POST", "/v1/snitches", newSnitch)
 	if err != nil {
 		return snitch, err
 	}
@@ -182,18 +178,18 @@ func (c *dmsClient) Create(newSnitch Snitch) (Snitch, error) {
 		return snitch, err
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	decodeErr := json.NewDecoder(resp.Body).Decode(&snitch)
 	if decodeErr != nil {
-		err = fmt.Errorf("error creating snitch: %v", decodeErr)
+		err = fmt.Errorf("error creating snitch: %w", decodeErr)
 	}
 	return snitch, err
 }
 
 // Delete a snitch
 func (c *dmsClient) Delete(snitchToken string) (bool, error) {
-	req, err := c.newRequest("DELETE", "/v1/snitches/"+snitchToken, nil)
+	req, err := c.newRequest(context.Background(), "DELETE", "/v1/snitches/"+snitchToken, nil)
 	if err != nil {
 		return false, err
 	}
@@ -201,6 +197,7 @@ func (c *dmsClient) Delete(snitchToken string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == 204 {
 		return true, nil
@@ -230,7 +227,7 @@ func (c *dmsClient) FindSnitchesByName(snitchName string) ([]Snitch, error) {
 // Update the snitch
 func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 	var snitch Snitch
-	req, err := c.newRequest("PATCH", "/v1/snitches/"+updateSnitch.Token, updateSnitch)
+	req, err := c.newRequest(context.Background(), "PATCH", "/v1/snitches/"+updateSnitch.Token, updateSnitch)
 	if err != nil {
 		return snitch, err
 	}
@@ -239,7 +236,7 @@ func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 		return snitch, err
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	err = json.NewDecoder(resp.Body).Decode(&snitch)
 
 	return snitch, err
@@ -247,18 +244,18 @@ func (c *dmsClient) Update(updateSnitch Snitch) (Snitch, error) {
 
 // Initialize the snitch with a basic GET call to its url
 func (c *dmsClient) CheckIn(s Snitch) error {
-	var buf io.ReadWriter
-	req, err := http.NewRequest("GET", s.CheckInURL, buf)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", s.CheckInURL, nil)
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("User-Agent", "golang httpClient")
 
-	_, err = c.do(req, "check_in")
+	resp, err := c.do(req, "check_in")
 	if err != nil {
 		return err
 	}
+	defer func() { _ = resp.Body.Close() }()
 
 	return nil
 }

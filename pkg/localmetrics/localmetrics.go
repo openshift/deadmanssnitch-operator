@@ -15,10 +15,11 @@
 package localmetrics
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (

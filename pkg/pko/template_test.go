@@ -3,6 +3,7 @@ package pko
 import (
 	"bytes"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,10 +44,13 @@ func templateFuncMap() template.FuncMap {
 // renderTemplate renders a gotmpl file with the given config data and returns the output.
 func renderTemplate(t *testing.T, filename string, data map[string]interface{}) string {
 	t.Helper()
-	tmplPath := filepath.Join(deployPkoDir(), filename)
-	content, err := os.ReadFile(tmplPath)
+	if !fs.ValidPath(filename) {
+		t.Fatalf("invalid template filename: %s", filename)
+	}
+	baseFS := os.DirFS(deployPkoDir())
+	content, err := fs.ReadFile(baseFS, filename)
 	if err != nil {
-		t.Fatalf("failed to read template %s: %v", tmplPath, err)
+		t.Fatalf("failed to read template %s: %v", filename, err)
 	}
 
 	tmpl, err := template.New(filename).Funcs(templateFuncMap()).Parse(string(content))
@@ -106,7 +110,7 @@ func TestDeploymentGotmpl(t *testing.T) {
 		t.Errorf("expected kind=Deployment, got %v", doc["kind"])
 	}
 
-	metadata := doc["metadata"].(map[string]interface{})
+	metadata, _ := doc["metadata"].(map[string]interface{})
 	if metadata["name"] != "deadmanssnitch-operator" {
 		t.Errorf("expected name=deadmanssnitch-operator, got %v", metadata["name"])
 	}
@@ -114,7 +118,7 @@ func TestDeploymentGotmpl(t *testing.T) {
 		t.Errorf("expected namespace=deadmanssnitch-operator, got %v", metadata["namespace"])
 	}
 
-	annotations := metadata["annotations"].(map[string]interface{})
+	annotations, _ := metadata["annotations"].(map[string]interface{})
 	if annotations["package-operator.run/phase"] != "deploy" {
 		t.Errorf("expected phase=deploy, got %v", annotations["package-operator.run/phase"])
 	}
@@ -132,7 +136,9 @@ func TestDeploymentGotmpl(t *testing.T) {
 
 func TestDeploymentGotmpl_Fedramp(t *testing.T) {
 	config := defaultConfig()
-	config["config"].(map[string]interface{})["fedramp"] = "true"
+	if configMap, ok := config["config"].(map[string]interface{}); ok {
+		configMap["fedramp"] = "true"
+	}
 
 	output := renderTemplate(t, "Deployment-deadmanssnitch-operator.yaml.gotmpl", config)
 
@@ -149,12 +155,12 @@ func TestDMSIGotmpl_WithSilentAlertIds(t *testing.T) {
 		t.Errorf("expected kind=DeadmansSnitchIntegration, got %v", doc["kind"])
 	}
 
-	metadata := doc["metadata"].(map[string]interface{})
+	metadata, _ := doc["metadata"].(map[string]interface{})
 	if metadata["name"] != "osd" {
 		t.Errorf("expected name=osd, got %v", metadata["name"])
 	}
 
-	annotations := metadata["annotations"].(map[string]interface{})
+	annotations, _ := metadata["annotations"].(map[string]interface{})
 	if annotations["package-operator.run/phase"] != "integrations" {
 		t.Errorf("expected phase=integrations, got %v", annotations["package-operator.run/phase"])
 	}
@@ -197,25 +203,25 @@ func TestDMSISupportexGotmpl(t *testing.T) {
 	output := renderTemplate(t, "DeadmansSnitchIntegration-osd-supportex.yaml.gotmpl", defaultConfig())
 	doc := parseYAMLDocument(t, output)
 
-	metadata := doc["metadata"].(map[string]interface{})
+	metadata, _ := doc["metadata"].(map[string]interface{})
 	if metadata["name"] != "osd-supportex" {
 		t.Errorf("expected name=osd-supportex, got %v", metadata["name"])
 	}
 
-	annotations := metadata["annotations"].(map[string]interface{})
+	annotations, _ := metadata["annotations"].(map[string]interface{})
 	if annotations["package-operator.run/phase"] != "integrations" {
 		t.Errorf("expected phase=integrations, got %v", annotations["package-operator.run/phase"])
 	}
 
 	// supportex variant should have support-exception with operator: In
 	// (the osd variant has NotIn)
-	spec := doc["spec"].(map[string]interface{})
-	selector := spec["clusterDeploymentSelector"].(map[string]interface{})
-	expressions := selector["matchExpressions"].([]interface{})
+	spec, _ := doc["spec"].(map[string]interface{})
+	selector, _ := spec["clusterDeploymentSelector"].(map[string]interface{})
+	expressions, _ := selector["matchExpressions"].([]interface{})
 
 	foundSupportException := false
 	for _, expr := range expressions {
-		e := expr.(map[string]interface{})
+		e, _ := expr.(map[string]interface{})
 		if e["key"] == "ext-managed.openshift.io/support-exception" {
 			if e["operator"] != "In" {
 				t.Errorf("expected support-exception operator=In for supportex, got %v", e["operator"])
@@ -229,7 +235,7 @@ func TestDMSISupportexGotmpl(t *testing.T) {
 
 	// supportex should NOT have limited-support exclusion
 	for _, expr := range expressions {
-		e := expr.(map[string]interface{})
+		e, _ := expr.(map[string]interface{})
 		if e["key"] == "api.openshift.com/limited-support" {
 			t.Error("supportex should NOT have limited-support exclusion")
 		}
