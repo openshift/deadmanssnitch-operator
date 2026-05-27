@@ -3,7 +3,7 @@ module github.com/openshift/deadmanssnitch-operator
 go 1.25.4
 
 require (
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.3
 	// go get -u github.com/openshift/api@relase-4.13
 	github.com/openshift/api v0.0.0-20230228142948-d170fcdc0fa6
 	github.com/openshift/hive/apis v0.0.0-20230314202213-17cb22fc3d7c
