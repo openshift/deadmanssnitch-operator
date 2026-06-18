@@ -1,0 +1,94 @@
+# Gitleaks Configuration for deadmanssnitch-operator
+# https://github.com/gitleaks/gitleaks
+#
+# Purpose: Detect hardcoded secrets, credentials, and sensitive data
+# Integration: Runs in pre-commit hook (prek) and Tekton CI
+#
+# Usage:
+#   gitleaks detect --source . --verbose
+#   prek run gitleaks
+#
+
+title = "gitleaks config for deadmanssnitch-operator"
+
+# =============================================================================
+# GLOBAL ALLOWLIST
+# =============================================================================
+
+[allowlist]
+description = "Global allowlist for deadmanssnitch-operator"
+
+# Test fixtures with fake credentials, generated code, and vendored code
+paths = [
+  '''testdata/.*\.go''',
+  '''pkg/.*/testdata/.*\.go''',
+  '''boilerplate/.*''',
+  '''vendor/.*''',
+  '''zz_generated\..*\.go''',
+]
+
+# Allow specific test values that look like secrets but aren't
+regexes = [
+  '''(?i)fake[_-]?token''',
+  '''(?i)test[_-]?secret''',
+  '''(?i)example[_-]?key''',
+  '''(?i)dummy[_-]?password''',
+  '''(?i)placeholder''',
+  '''AKIAIOSFODNN7EXAMPLE''',  # AWS example from docs
+]
+
+commits = []
+
+stopwords = [
+  "example",
+  "test",
+  "fake",
+  "dummy",
+  "placeholder",
+  "sample",
+  "mock",
+]
+
+# =============================================================================
+# CUSTOM RULES (deadmanssnitch-operator specific)
+# =============================================================================
+
+[[rules]]
+id = "dms-api-key"
+description = "Dead Man's Snitch API key"
+regex = '''(?i)dms[_-]?api[_-]?key\s*[:=]\s*['"]?[a-zA-Z0-9]{20,}'''
+tags = ["token", "dms", "critical"]
+
+[[rules]]
+id = "openshift-pull-secret"
+description = "OpenShift pull secret"
+regex = '''(?i)pull[_-]?secret.*auth.*[a-zA-Z0-9+/]{30,}={0,2}'''
+tags = ["secret", "openshift", "high"]
+
+[[rules]]
+id = "kubeconfig-embedded"
+description = "Embedded kubeconfig with credentials"
+regex = '''client-certificate-data:\s*[a-zA-Z0-9+/]{30,}={0,2}'''
+tags = ["kubeconfig", "certificate", "critical"]
+
+[[rules]]
+id = "private-key-pem"
+description = "PEM-encoded private key"
+regex = '''-----BEGIN\s+(RSA\s+)?PRIVATE KEY-----'''
+tags = ["private-key", "pem", "critical"]
+
+# =============================================================================
+# NOTES
+# =============================================================================
+
+# 1. This config extends gitleaks default rules
+# 2. False positives should be added to allowlist with justification
+# 3. Never disable gitleaks entirely (security critical)
+# 4. Review allowlist periodically for stale entries
+# 5. All allowlist additions should be documented in PR
+
+# To test this config:
+#   gitleaks detect --source . --config .gitleaks.toml --verbose
+#
+# To scan specific commit:
+#   gitleaks detect --source . --log-opts <commit-hash>
