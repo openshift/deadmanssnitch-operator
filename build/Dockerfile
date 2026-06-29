@@ -1,10 +1,10 @@
-FROM quay.io/redhat-services-prod/openshift/boilerplate:image-v8.3.6 AS builder
+FROM quay.io/redhat-services-prod/openshift/boilerplate:image-v8.4.1 AS builder
 COPY . /go/src/github.com/openshift/deadmanssnitch-operator
 WORKDIR /go/src/github.com/openshift/deadmanssnitch-operator
 ENV GOFLAGS=""
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1780378819
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1782708562
 ENV OPERATOR_BIN=deadmanssnitch-operator
 
 WORKDIR /root/
