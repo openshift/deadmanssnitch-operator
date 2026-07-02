@@ -31,7 +31,6 @@ spec:
           steps:
             - name: clone-and-check
               image: alpine/git:latest
-              onError: continue
               workingDir: $(workspaces.source.path)
               script: |
                 #!/usr/bin/env sh
