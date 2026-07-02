@@ -29,33 +29,24 @@ spec:
               description: Git credentials for authenticated clone
               optional: true
           steps:
-            - name: clone
-              image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+            - name: clone-and-check
+              image: alpine/git:latest
+              onError: continue
               workingDir: $(workspaces.source.path)
-              env:
-                - name: GIT_AUTH_PATH
-                  value: $(workspaces.git-auth.path)
               script: |
-                #!/usr/bin/env bash
-                set -euo pipefail
-                microdnf install -y git-core 2>/dev/null
-                if [ -f "${GIT_AUTH_PATH}/.gitconfig" ]; then
-                  cp "${GIT_AUTH_PATH}/.gitconfig" ~/.gitconfig
-                fi
-                if [ -f "${GIT_AUTH_PATH}/.git-credentials" ]; then
-                  cp "${GIT_AUTH_PATH}/.git-credentials" ~/.git-credentials
+                #!/usr/bin/env sh
+                set -eu
+
+                # ── Clone ──
+                if [ -d "$(workspaces.git-auth.path)" ] 2>/dev/null; then
+                  cp "$(workspaces.git-auth.path)/.gitconfig" ~/.gitconfig 2>/dev/null || true
+                  cp "$(workspaces.git-auth.path)/.git-credentials" ~/.git-credentials 2>/dev/null || true
                 fi
                 git clone '{{source_url}}' source
                 cd source
                 git checkout '{{revision}}'
-            - name: check-conformance
-              image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-              onError: continue
-              workingDir: $(workspaces.source.path)/source
-              script: |
-                #!/usr/bin/env bash
-                set -uo pipefail
 
+                # ── Conformance Check ──
                 PASS=0
                 FAIL=0
                 WARN=0
@@ -69,7 +60,7 @@ spec:
                 echo "Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
                 echo ""
 
-                # ── Section 1: File Existence ──
+                # ── File Existence ──
 
                 echo "── File Existence ──"
 
@@ -139,7 +130,7 @@ spec:
 
                 echo ""
 
-                # ── Section 2: Content Validation ──
+                # ── Content Validation ──
 
                 echo "── Content Validation ──"
 
@@ -155,7 +146,7 @@ spec:
                   if echo "$claude_content" | grep -qiE '##.*(agent rules|agents must|agent)'; then
                     pass "CLAUDE.md has agent rules section"
                   else
-                    warn "CLAUDE.md missing agent rules section (recommended heading: 'Agent Rules')"
+                    warn "CLAUDE.md missing agent rules section (recommended heading: Agent Rules)"
                   fi
 
                   if echo "$claude_content" | grep -qiE '##.*(architecture|project overview|what this operator does|overview)'; then
