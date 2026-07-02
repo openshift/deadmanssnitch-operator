@@ -20,34 +20,34 @@ metadata:
 spec:
   pipelineSpec:
     tasks:
-      - name: clone-repository
-        params:
-          - name: url
-            value: '{{source_url}}'
-          - name: revision
-            value: '{{revision}}'
-        taskRef:
-          params:
-            - name: name
-              value: git-clone
-            - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-git-clone:0.1@sha256:0d76f429b730ee7f1b9dab0e7e05f47d5aca498c4dc143de2293db1f7c735e02
-            - name: kind
-              value: task
-          resolver: bundles
-        workspaces:
-          - name: output
-            workspace: workspace
-          - name: basic-auth
-            workspace: git-auth
       - name: agentic-sdlc-check
-        runAfter:
-          - clone-repository
         taskSpec:
           workspaces:
             - name: source
-              description: Workspace containing the cloned repository source code
+              description: Workspace for cloning and checking repository source
+            - name: git-auth
+              description: Git credentials for authenticated clone
+              optional: true
           steps:
+            - name: clone
+              image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+              workingDir: $(workspaces.source.path)
+              env:
+                - name: GIT_AUTH_PATH
+                  value: $(workspaces.git-auth.path)
+              script: |
+                #!/usr/bin/env bash
+                set -euo pipefail
+                microdnf install -y git-core 2>/dev/null
+                if [ -f "${GIT_AUTH_PATH}/.gitconfig" ]; then
+                  cp "${GIT_AUTH_PATH}/.gitconfig" ~/.gitconfig
+                fi
+                if [ -f "${GIT_AUTH_PATH}/.git-credentials" ]; then
+                  cp "${GIT_AUTH_PATH}/.git-credentials" ~/.git-credentials
+                fi
+                git clone '{{source_url}}' source
+                cd source
+                git checkout '{{revision}}'
             - name: check-conformance
               image: registry.access.redhat.com/ubi9/ubi-minimal:latest
               onError: continue
@@ -235,6 +235,8 @@ spec:
         workspaces:
           - name: source
             workspace: workspace
+          - name: git-auth
+            workspace: git-auth
     workspaces:
       - name: workspace
       - name: git-auth
