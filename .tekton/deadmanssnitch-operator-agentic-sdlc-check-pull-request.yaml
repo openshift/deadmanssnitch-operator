@@ -20,32 +20,89 @@ metadata:
 spec:
   pipelineSpec:
     tasks:
-      - name: agentic-sdlc-check
+      - name: clone-repository
+        params:
+          - name: url
+            value: '{{source_url}}'
+          - name: revision
+            value: '{{revision}}'
+        taskRef:
+          params:
+            - name: name
+              value: git-clone
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-git-clone:0.1@sha256:39efcb7d049d84feccce65e589996a89b19ab7c9f504015c3792e3daee697da3
+            - name: kind
+              value: task
+          resolver: bundles
+        workspaces:
+          - name: output
+            workspace: workspace
+          - name: basic-auth
+            workspace: git-auth
+      - name: check-file-existence
+        runAfter:
+          - clone-repository
         taskSpec:
-          workspaces:
-            - name: source
-              description: Workspace for cloning and checking repository source
-            - name: git-auth
-              description: Git credentials for authenticated clone
-              optional: true
           steps:
-            - name: clone-and-check
-              image: alpine/git:latest
-              workingDir: $(workspaces.source.path)
+            - name: check-files
+              image: quay.io/konflux-ci/git-clone@sha256:09ac9c14392b5c2b8057f66cc4abfb8ce5d7214706318959d00908923a754434
+              workingDir: $(workspaces.source.path)/source
               script: |
                 #!/usr/bin/env sh
                 set -eu
 
-                # ── Clone ──
-                if [ -d "$(workspaces.git-auth.path)" ] 2>/dev/null; then
-                  cp "$(workspaces.git-auth.path)/.gitconfig" ~/.gitconfig 2>/dev/null || true
-                  cp "$(workspaces.git-auth.path)/.git-credentials" ~/.git-credentials 2>/dev/null || true
-                fi
-                git clone '{{source_url}}' source
-                cd source
-                git checkout '{{revision}}'
+                PASS=0
+                FAIL=0
 
-                # ── Conformance Check ──
+                pass() { echo "PASS: $1"; PASS=$((PASS + 1)); }
+                fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+
+                echo "=== Agentic SDLC Conformance: File Existence (ROSA-730) ==="
+                echo "Repository: $(basename $(pwd))"
+                echo "Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                echo ""
+
+                if [ -f "CLAUDE.md" ]; then pass "CLAUDE.md exists"; else fail "CLAUDE.md missing"; fi
+                if [ -f ".pre-commit-config.yaml" ]; then pass ".pre-commit-config.yaml exists"; else fail ".pre-commit-config.yaml missing"; fi
+                if [ -f ".codecov.yml" ]; then pass ".codecov.yml exists"; else fail ".codecov.yml missing"; fi
+                if [ -f "CONTRIBUTING.md" ]; then pass "CONTRIBUTING.md exists"; else fail "CONTRIBUTING.md missing"; fi
+                if [ -f "DEVELOPMENT.md" ]; then pass "DEVELOPMENT.md exists"; else fail "DEVELOPMENT.md missing"; fi
+                if [ -f "TESTING.md" ]; then pass "TESTING.md exists"; else fail "TESTING.md missing"; fi
+
+                if [ -f "CLAUDE.md" ]; then
+                  if [ -f ".claude/settings.json" ]; then pass ".claude/settings.json exists"; else fail ".claude/settings.json missing (CLAUDE.md present but no Claude hooks)"; fi
+                fi
+
+                if [ -d "boilerplate/openshift/golang-osd-operator" ]; then
+                  if [ -f "boilerplate/openshift/golang-osd-operator/golangci.yml" ]; then pass "golangci.yml exists (boilerplate convention)"; else fail "golangci.yml missing from boilerplate/openshift/golang-osd-operator/"; fi
+                elif [ -d "boilerplate/openshift/golang-lint" ]; then
+                  if [ -f "boilerplate/openshift/golang-lint/golangci.yml" ]; then pass "golangci.yml exists (golang-lint convention)"; else fail "golangci.yml missing from boilerplate/openshift/golang-lint/"; fi
+                else
+                  if [ -f ".golangci.yml" ] || [ -f ".golangci.yaml" ]; then pass "golangci config exists at repo root"; else fail "golangci config missing (no boilerplate dir and no root .golangci.yml/.yaml)"; fi
+                fi
+
+                echo ""
+                TOTAL=$((PASS + FAIL))
+                echo "File existence: $PASS / $TOTAL passed"
+                if [ "$FAIL" -gt 0 ]; then exit 1; fi
+          workspaces:
+            - name: source
+        workspaces:
+          - name: source
+            workspace: workspace
+      - name: check-content-validation
+        runAfter:
+          - clone-repository
+        taskSpec:
+          steps:
+            - name: check-content
+              image: quay.io/konflux-ci/git-clone@sha256:09ac9c14392b5c2b8057f66cc4abfb8ce5d7214706318959d00908923a754434
+              workingDir: $(workspaces.source.path)/source
+              script: |
+                #!/usr/bin/env sh
+                set -eu
+
                 PASS=0
                 FAIL=0
                 WARN=0
@@ -54,85 +111,12 @@ spec:
                 fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
                 warn() { echo "WARN: $1"; WARN=$((WARN + 1)); }
 
-                echo "=== Agentic SDLC Conformance Report (ROSA-730) ==="
+                echo "=== Agentic SDLC Conformance: Content Validation (ROSA-730) ==="
                 echo "Repository: $(basename $(pwd))"
                 echo "Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
                 echo ""
 
-                # ── File Existence ──
-
-                echo "── File Existence ──"
-
-                if [ -f "CLAUDE.md" ]; then
-                  pass "CLAUDE.md exists"
-                else
-                  fail "CLAUDE.md missing"
-                fi
-
-                if [ -f ".pre-commit-config.yaml" ]; then
-                  pass ".pre-commit-config.yaml exists"
-                else
-                  fail ".pre-commit-config.yaml missing"
-                fi
-
-                if [ -f ".codecov.yml" ]; then
-                  pass ".codecov.yml exists"
-                else
-                  fail ".codecov.yml missing"
-                fi
-
-                if [ -f "CONTRIBUTING.md" ]; then
-                  pass "CONTRIBUTING.md exists"
-                else
-                  fail "CONTRIBUTING.md missing"
-                fi
-
-                if [ -f "DEVELOPMENT.md" ]; then
-                  pass "DEVELOPMENT.md exists"
-                else
-                  fail "DEVELOPMENT.md missing"
-                fi
-
-                if [ -f "TESTING.md" ]; then
-                  pass "TESTING.md exists"
-                else
-                  fail "TESTING.md missing"
-                fi
-
-                if [ -f "CLAUDE.md" ]; then
-                  if [ -f ".claude/settings.json" ]; then
-                    pass ".claude/settings.json exists"
-                  else
-                    fail ".claude/settings.json missing (CLAUDE.md present but no Claude hooks)"
-                  fi
-                fi
-
-                if [ -d "boilerplate/openshift/golang-osd-operator" ]; then
-                  if [ -f "boilerplate/openshift/golang-osd-operator/golangci.yml" ]; then
-                    pass "golangci.yml exists (boilerplate convention)"
-                  else
-                    fail "golangci.yml missing from boilerplate/openshift/golang-osd-operator/"
-                  fi
-                elif [ -d "boilerplate/openshift/golang-lint" ]; then
-                  if [ -f "boilerplate/openshift/golang-lint/golangci.yml" ]; then
-                    pass "golangci.yml exists (golang-lint convention)"
-                  else
-                    fail "golangci.yml missing from boilerplate/openshift/golang-lint/"
-                  fi
-                else
-                  if [ -f ".golangci.yml" ] || [ -f ".golangci.yaml" ]; then
-                    pass "golangci config exists at repo root"
-                  else
-                    fail "golangci config missing (no boilerplate dir and no root .golangci.yml/.yaml)"
-                  fi
-                fi
-
-                echo ""
-
-                # ── Content Validation ──
-
-                echo "── Content Validation ──"
-
+                # CLAUDE.md required sections
                 if [ -f "CLAUDE.md" ]; then
                   claude_content=$(cat CLAUDE.md)
 
@@ -153,8 +137,11 @@ spec:
                   else
                     fail "CLAUDE.md missing architecture/overview section"
                   fi
+                else
+                  fail "CLAUDE.md not found — skipping content checks"
                 fi
 
+                # .codecov.yml patch coverage target
                 if [ -f ".codecov.yml" ]; then
                   patch_target=$(grep -A5 'patch:' .codecov.yml | grep 'target:' | head -1 | grep -oE '[0-9]+' | head -1)
                   if [ -n "$patch_target" ]; then
@@ -168,6 +155,7 @@ spec:
                   fi
                 fi
 
+                # .pre-commit-config.yaml required hooks
                 if [ -f ".pre-commit-config.yaml" ]; then
                   pcf_content=$(cat .pre-commit-config.yaml)
 
@@ -190,6 +178,7 @@ spec:
                   fi
                 fi
 
+                # Documentation files must not be stubs
                 for doc in CONTRIBUTING.md DEVELOPMENT.md TESTING.md; do
                   if [ -f "$doc" ]; then
                     line_count=$(wc -l < "$doc")
@@ -202,31 +191,18 @@ spec:
                 done
 
                 echo ""
-
-                # ── Summary ──
-
                 TOTAL=$((PASS + FAIL + WARN))
-                echo "=== Summary ==="
-                echo "PASS: $PASS / $TOTAL"
-                echo "FAIL: $FAIL / $TOTAL"
-                if [ "$WARN" -gt 0 ]; then
-                  echo "WARN: $WARN / $TOTAL"
-                fi
-                echo ""
-
+                echo "Content validation: $PASS passed, $FAIL failed, $WARN warnings out of $TOTAL checks"
                 if [ "$FAIL" -gt 0 ]; then
-                  echo "STATUS: NON-CONFORMANT ($FAIL issues found)"
+                  echo ""
                   echo "See ROSA-730 for agentic SDLC standards: https://issues.redhat.com/browse/ROSA-730"
                   exit 1
-                else
-                  echo "STATUS: CONFORMANT"
-                  exit 0
                 fi
+          workspaces:
+            - name: source
         workspaces:
           - name: source
             workspace: workspace
-          - name: git-auth
-            workspace: git-auth
     workspaces:
       - name: workspace
       - name: git-auth
