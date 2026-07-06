@@ -18,6 +18,8 @@ metadata:
   name: deadmanssnitch-operator-agentic-sdlc-check
   namespace: deadmanssnitch-operator-tenant
 spec:
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-deadmanssnitch-operator
   pipelineSpec:
     tasks:
       - name: clone-repository
