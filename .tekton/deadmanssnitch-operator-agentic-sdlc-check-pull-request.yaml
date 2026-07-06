@@ -28,6 +28,8 @@ spec:
             value: '{{source_url}}'
           - name: revision
             value: '{{revision}}'
+          - name: subdirectory
+            value: source
         taskRef:
           params:
             - name: name
