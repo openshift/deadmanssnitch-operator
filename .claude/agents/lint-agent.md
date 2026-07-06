@@ -1,7 +1,7 @@
 ---
 name: lint-agent
 description: Automated linting and code quality enforcement. Use when running formatting checks, executing golangci-lint, auto-fixing safe issues, or investigating CI lint failures.
-tools: Bash, Read, Edit
+tools: Bash(make go-check), Bash(go fmt *), Bash(golangci-lint *), Read, Edit
 model: sonnet
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: security-agent
 description: Security scanning and policy enforcement. Use when scanning for secrets, validating RBAC (no wildcards), checking insecure patterns, or investigating security violations in CI.
-tools: Bash, Read, Grep, Edit
+tools: Bash(make rbac-wildcard-check), Bash(gitleaks *), Bash(prek run *), Bash(golangci-lint *), Read, Grep, Edit
 model: sonnet
 ---
 
