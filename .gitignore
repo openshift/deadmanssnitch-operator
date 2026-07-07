@@ -84,3 +84,7 @@ tags
 ### Local testing of app-sre pipeline creates these
 .docker/
 saas-deadmanssnitch-operator-bundle
+
+### Claude Code runtime artifacts
+.claude/worktrees/
+.work/
