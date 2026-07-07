@@ -102,7 +102,12 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 dmsAPIKeySecretRef:
-                  description: reference to the secret containing deadmanssnitch-api-key
+                  description: |-
+                    DmsAPIKeySecretRef references the secret containing the DMS API key.
+                    Only the Name field is used; the Namespace field is intentionally ignored —
+                    the operator always reads this secret from its own namespace
+                    (config.OperatorNamespace) to prevent confused-deputy attacks where a
+                    CR author could cause the operator to exfiltrate secrets from other namespaces.
                   properties:
                     name:
                       description: name is unique within a namespace to reference a secret resource.

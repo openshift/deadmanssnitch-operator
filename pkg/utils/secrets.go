@@ -11,9 +11,9 @@ import (
 )
 
 // LoadSecretData loads a given secret key and returns its data as a string.
-func LoadSecretData(c client.Client, secretName, namespace, dataKey string) (string, error) {
+func LoadSecretData(ctx context.Context, c client.Client, secretName, namespace, dataKey string) (string, error) {
 	s := &corev1.Secret{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: namespace}, s)
+	err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, s)
 	if err != nil {
 		return "", err
 	}
@@ -28,6 +28,6 @@ func LoadSecretData(c client.Client, secretName, namespace, dataKey string) (str
 // Prefer this over LoadSecretData when reading operator credentials to prevent
 // callers from accidentally reading secrets from arbitrary namespaces using the
 // operator's elevated cluster-wide secret-read privilege.
-func LoadOperatorSecretData(c client.Client, secretName, dataKey string) (string, error) {
-	return LoadSecretData(c, secretName, config.OperatorNamespace, dataKey)
+func LoadOperatorSecretData(ctx context.Context, c client.Client, secretName, dataKey string) (string, error) {
+	return LoadSecretData(ctx, c, secretName, config.OperatorNamespace, dataKey)
 }

@@ -98,7 +98,7 @@ func (r *DeadmansSnitchIntegrationReconciler) Reconcile(ctx context.Context, req
 	// set the DMS finalizer variable
 	deadMansSnitchFinalizer := DeadMansSnitchFinalizerPrefix + dmsi.Name
 
-	dmsAPIKey, err := utils.LoadOperatorSecretData(r.Client, dmsi.Spec.DmsAPIKeySecretRef.Name,
+	dmsAPIKey, err := utils.LoadOperatorSecretData(ctx, r.Client, dmsi.Spec.DmsAPIKeySecretRef.Name,
 		deadMansSnitchAPISecretKey)
 	if err != nil {
 		return reconcile.Result{}, err
