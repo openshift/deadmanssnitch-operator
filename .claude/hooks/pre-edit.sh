@@ -33,9 +33,9 @@ fi
 
 if [[ -z "$CANONICAL" ]]; then
   if command -v python3 >/dev/null 2>&1; then
-    CANONICAL=$(python3 -c "import os.path; print(os.path.relpath(os.path.normpath('$FILE'), '$REPO_ROOT'))" 2>/dev/null || echo "")
+    CANONICAL=$(python3 -c 'import os.path, sys; print(os.path.relpath(os.path.normpath(sys.argv[1]), sys.argv[2]))' "$FILE" "$REPO_ROOT" 2>/dev/null || echo "")
   elif command -v python >/dev/null 2>&1; then
-    CANONICAL=$(python -c "import os.path; print(os.path.relpath(os.path.normpath('$FILE'), '$REPO_ROOT'))" 2>/dev/null || echo "")
+    CANONICAL=$(python -c 'import os.path, sys; print(os.path.relpath(os.path.normpath(sys.argv[1]), sys.argv[2]))' "$FILE" "$REPO_ROOT" 2>/dev/null || echo "")
   fi
 fi
 
