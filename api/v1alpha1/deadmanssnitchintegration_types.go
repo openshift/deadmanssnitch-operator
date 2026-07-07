@@ -26,7 +26,11 @@ import (
 
 // DeadmansSnitchIntegrationSpec defines the desired state of DeadmansSnitchIntegration
 type DeadmansSnitchIntegrationSpec struct {
-	//reference to the secret containing deadmanssnitch-api-key
+	// DmsAPIKeySecretRef references the secret containing the DMS API key.
+	// Only the Name field is used; the Namespace field is intentionally ignored —
+	// the operator always reads this secret from its own namespace
+	// (config.OperatorNamespace) to prevent confused-deputy attacks where a
+	// CR author could cause the operator to exfiltrate secrets from other namespaces.
 	DmsAPIKeySecretRef corev1.SecretReference `json:"dmsAPIKeySecretRef"`
 
 	//a label selector used to find which clusterdeployment CRs receive a DMS integration based on this configuration
