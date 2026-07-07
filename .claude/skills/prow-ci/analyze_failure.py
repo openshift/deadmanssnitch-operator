@@ -183,9 +183,16 @@ def main():
         output = report['summary']
 
     if args.output:
-        with open(args.output, 'w') as f:
-            f.write(output)
-        print(f"Analysis saved to: {args.output}")
+        try:
+            output_parent = os.path.dirname(args.output)
+            if output_parent:
+                os.makedirs(output_parent, exist_ok=True)
+            with open(args.output, 'w', encoding='utf-8') as f:
+                f.write(output)
+            print(f"Analysis saved to: {args.output}")
+        except OSError as e:
+            print(f"Error: Could not write output file {args.output}: {e}", file=sys.stderr)
+            return 1
     else:
         print(output)
 

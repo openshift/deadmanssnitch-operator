@@ -64,6 +64,9 @@ def download_from_gcs(gcs_path, local_path):
         ]
         subprocess.run(cmd, check=True, capture_output=True)
         return True
+    except FileNotFoundError:
+        print("Error: gcloud CLI not found in PATH. Install Google Cloud SDK first.", file=sys.stderr)
+        return False
     except subprocess.CalledProcessError as e:
         print(f"Warning: Could not download {gcs_path}: {e.stderr.decode()}", file=sys.stderr)
         return False

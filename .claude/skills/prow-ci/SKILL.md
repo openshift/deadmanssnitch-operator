@@ -111,7 +111,7 @@ make validate
 make coverage
 
 # For container builds (Tekton pipelines)
-make docker-build
+boilerplate/_lib/container-make go-build
 ```
 
 ## Prow Resources

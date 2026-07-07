@@ -11,6 +11,9 @@
 
 title = "gitleaks config for deadmanssnitch-operator"
 
+[extend]
+useDefault = true
+
 # =============================================================================
 # GLOBAL ALLOWLIST
 # =============================================================================

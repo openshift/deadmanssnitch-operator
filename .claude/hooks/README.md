@@ -127,7 +127,6 @@ Used by Claude Code stop hook and CI environments without internal network acces
 
 **Excludes**:
 - `rh-pre-commit` (requires Red Hat internal network)
-- `gitleaks` (may not be available in all CI environments)
 
 **Usage**:
 ```bash
