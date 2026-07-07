@@ -823,8 +823,9 @@ func TestCrossNamespaceSecretRefRejected(t *testing.T) {
 		},
 	})
 
-	// The reconcile must fail because the secret does not exist in config.OperatorNamespace.
-	// If the operator incorrectly used DmsAPIKeySecretRef.Namespace, it would succeed and
-	// exfiltrate the foreign secret to api.deadmanssnitch.com.
+	// The reconcile must fail with a not-found error because the secret does not exist
+	// in config.OperatorNamespace. If the operator incorrectly used DmsAPIKeySecretRef.Namespace,
+	// it would find the foreign secret and succeed, exfiltrating it to api.deadmanssnitch.com.
 	assert.Error(t, reconcileErr, "reconcile should fail when DmsAPIKeySecretRef points to a foreign namespace")
+	assert.True(t, errors.IsNotFound(reconcileErr), "expected a not-found error for the secret missing from config.OperatorNamespace")
 }
