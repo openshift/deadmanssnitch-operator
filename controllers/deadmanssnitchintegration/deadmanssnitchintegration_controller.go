@@ -98,8 +98,11 @@ func (r *DeadmansSnitchIntegrationReconciler) Reconcile(ctx context.Context, req
 	// set the DMS finalizer variable
 	deadMansSnitchFinalizer := DeadMansSnitchFinalizerPrefix + dmsi.Name
 
+	// Always read from the operator's own namespace to prevent a confused-deputy
+	// attack where a DMSI author points DmsAPIKeySecretRef.Namespace at a foreign
+	// namespace and has the operator exfiltrate that secret to api.deadmanssnitch.com.
 	dmsAPIKey, err := utils.LoadSecretData(r.Client, dmsi.Spec.DmsAPIKeySecretRef.Name,
-		dmsi.Spec.DmsAPIKeySecretRef.Namespace, deadMansSnitchAPISecretKey)
+		config.OperatorNamespace, deadMansSnitchAPISecretKey)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

@@ -757,3 +757,74 @@ func verifyNoSecret(c client.Client, expected *SecretEntry) bool {
 
 	return true
 }
+
+// TestCrossNamespaceSecretRefRejected verifies that a DMSI whose DmsAPIKeySecretRef.Namespace
+// points to a foreign namespace cannot read that secret. The operator must always look up the
+// API key in its own namespace (config.OperatorNamespace), ignoring whatever namespace the CR author specifies.
+func TestCrossNamespaceSecretRefRejected(t *testing.T) {
+	err := deadmanssnitchv1alpha1.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
+	err = hiveapis.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
+
+	const foreignNamespace = "foreign-namespace"
+
+	// Secret exists only in the foreign namespace, NOT in config.OperatorNamespace.
+	foreignSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      deadMansSnitchAPISecretName,
+			Namespace: foreignNamespace,
+		},
+		Data: map[string][]byte{
+			deadMansSnitchAPISecretKey: []byte(testAPIKey),
+		},
+	}
+
+	// DMSI references the foreign namespace — the attack vector being tested.
+	dmsi := &deadmanssnitchv1alpha1.DeadmansSnitchIntegration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testDeadMansSnitchintegrationName,
+			Namespace: config.OperatorNamespace,
+		},
+		Spec: deadmanssnitchv1alpha1.DeadmansSnitchIntegrationSpec{
+			DmsAPIKeySecretRef: corev1.SecretReference{
+				Name:      deadMansSnitchAPISecretName,
+				Namespace: foreignNamespace,
+			},
+			ClusterDeploymentSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{config.ClusterDeploymentManagedLabel: "true"},
+			},
+			TargetSecretRef: corev1.SecretReference{
+				Name:      "test-secret",
+				Namespace: testNamespace,
+			},
+		},
+	}
+
+	mocks := setupDefaultMocks(t, []k8sruntime.Object{
+		testClusterDeployment(),
+		foreignSecret,
+		dmsi,
+	})
+	defer mocks.mockCtrl.Finish()
+
+	rdms := &DeadmansSnitchIntegrationReconciler{
+		Client: mocks.fakeKubeClient,
+		Scheme: scheme.Scheme,
+		dmsclient: func(apiKey string, collector *localmetrics.MetricsCollector) dmsclient.Client {
+			return mocks.mockDMSClient
+		},
+	}
+
+	_, reconcileErr := rdms.Reconcile(context.TODO(), reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      testDeadMansSnitchintegrationName,
+			Namespace: config.OperatorNamespace,
+		},
+	})
+
+	// The reconcile must fail because the secret does not exist in config.OperatorNamespace.
+	// If the operator incorrectly used DmsAPIKeySecretRef.Namespace, it would succeed and
+	// exfiltrate the foreign secret to api.deadmanssnitch.com.
+	assert.Error(t, reconcileErr, "reconcile should fail when DmsAPIKeySecretRef points to a foreign namespace")
+}
