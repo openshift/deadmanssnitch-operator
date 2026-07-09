@@ -102,6 +102,9 @@ func (r *DeadmansSnitchIntegrationReconciler) Reconcile(ctx context.Context, req
 	// says. Using the CR-supplied namespace would allow any principal with create on
 	// DeadmansSnitchIntegration to exfiltrate arbitrary Secrets via the operator's
 	// cluster-wide secret-read privilege (CWE-441 confused-deputy, ROSAENG-61327).
+	// NOTE: DmsAPIKeySecretRef.Namespace is intentionally ignored here and is effectively
+	// dead code. A follow-up PR should change the field type from corev1.SecretReference
+	// to corev1.LocalObjectReference to remove it from the API entirely.
 	dmsAPIKey, err := utils.LoadSecretData(r.Client, dmsi.Spec.DmsAPIKeySecretRef.Name,
 		config.OperatorNamespace, deadMansSnitchAPISecretKey)
 	if err != nil {
