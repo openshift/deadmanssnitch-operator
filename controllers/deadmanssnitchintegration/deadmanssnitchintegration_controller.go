@@ -98,8 +98,15 @@ func (r *DeadmansSnitchIntegrationReconciler) Reconcile(ctx context.Context, req
 	// set the DMS finalizer variable
 	deadMansSnitchFinalizer := DeadMansSnitchFinalizerPrefix + dmsi.Name
 
+	// Always read from the operator's own namespace regardless of what DmsAPIKeySecretRef.Namespace
+	// says. Using the CR-supplied namespace would allow any principal with create on
+	// DeadmansSnitchIntegration to exfiltrate arbitrary Secrets via the operator's
+	// cluster-wide secret-read privilege (CWE-441 confused-deputy, ROSAENG-61327).
+	// NOTE: DmsAPIKeySecretRef.Namespace is intentionally ignored here and is effectively
+	// dead code. A follow-up PR should change the field type from corev1.SecretReference
+	// to corev1.LocalObjectReference to remove it from the API entirely.
 	dmsAPIKey, err := utils.LoadSecretData(r.Client, dmsi.Spec.DmsAPIKeySecretRef.Name,
-		dmsi.Spec.DmsAPIKeySecretRef.Namespace, deadMansSnitchAPISecretKey)
+		config.OperatorNamespace, deadMansSnitchAPISecretKey)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
