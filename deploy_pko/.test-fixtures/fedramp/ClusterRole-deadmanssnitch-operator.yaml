@@ -10,28 +10,41 @@ rules:
 - apiGroups:
   - ''
   resources:
-  - pods
-  - services
-  - endpoints
-  - persistentvolumeclaims
-  - events
-  - configmaps
   - secrets
   verbs:
-  - '*'
+  - get
+  - list
+  - watch
+  - create
+  - delete
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - create
+  - update
+- apiGroups:
+  - ''
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ''
+  resources:
+  - services
+  verbs:
+  - get
+  - create
 - apiGroups:
   - ''
   resources:
   - namespaces
   verbs:
   - get
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - daemonsets
-  verbs:
-  - '*'
 - apiGroups:
   - monitoring.coreos.com
   resources:
@@ -56,16 +69,41 @@ rules:
   resources:
   - syncsets
   verbs:
-  - '*'
+  - get
+  - list
+  - watch
+  - create
+  - delete
 - apiGroups:
   - route.openshift.io
   resources:
   - routes
   verbs:
-  - '*'
+  - get
+  - create
 - apiGroups:
   - deadmanssnitch.managed.openshift.io
   resources:
-  - '*'
+  - deadmanssnitchintegrations
   verbs:
-  - '*'
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - deadmanssnitch.managed.openshift.io
+  resources:
+  - deadmanssnitchintegrations/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - deadmanssnitch.managed.openshift.io
+  resources:
+  - deadmanssnitchintegrations/finalizers
+  verbs:
+  - update
