@@ -7,6 +7,13 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - pods
+  verbs:
+  - get
+  - delete
+- apiGroups:
+  - ""
+  resources:
   - secrets
   verbs:
   - get
@@ -22,6 +29,7 @@ rules:
   - get
   - create
   - update
+  - delete
 - apiGroups:
   - ""
   resources:
@@ -36,6 +44,7 @@ rules:
   verbs:
   - get
   - create
+  - update
 - apiGroups:
   - ""
   resources:
@@ -78,6 +87,7 @@ rules:
   verbs:
   - get
   - create
+  - update
 - apiGroups:
   - deadmanssnitch.managed.openshift.io
   resources:
