@@ -244,3 +244,4 @@ Structural validation tests that run via `go test ./pkg/pko/...` as part of the 
 | Added a new config field to `manifest.yaml` | Add it to the `test.template` contexts |
 | Added a new `.gotmpl` file | Existing test contexts cover it automatically; add new contexts if it has conditional logic |
 | Changed conditional logic | Verify the Go unit tests still pass; add cases for new branches |
+
