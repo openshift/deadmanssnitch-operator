@@ -1,15 +1,9 @@
 reviewers:
-- geowa4
-- eth1030
-- BATMAN-JD
-- AlexSmithGH
+- rosa-trust-engineering-observability
 - robotmaxtron
 - rafael-azevedo
 approvers:
-- geowa4
-- eth1030
-- BATMAN-JD
-- AlexSmithGH
+- rosa-trust-engineering-observability
 - robotmaxtron
 - rafael-azevedo
 - srep-functional-team-rocket
