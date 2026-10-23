@@ -1,7 +1,9 @@
 reviewers:
+- rosa-trust-engineering-observability
 - robotmaxtron
 - rafael-azevedo
 approvers:
+- rosa-trust-engineering-observability
 - robotmaxtron
 - rafael-azevedo
 - srep-functional-team-rocket
