@@ -1,0 +1,16 @@
+FROM quay.io/redhat-services-prod/openshift/boilerplate:latest AS builder
+COPY . /go/src/github.com/openshift/deadmanssnitch-operator
+WORKDIR /go/src/github.com/openshift/deadmanssnitch-operator
+ENV GOFLAGS=""
+RUN make go-build
+
+FROM registry.access.redhat.com/hi/core-runtime:2.43-openssl-fips@sha256:dda4ca9f205064c1391168713fae4dfe32057f3a1e619540db34f9d167b71c74 AS runner
+ENV OPERATOR_BIN=deadmanssnitch-operator
+
+WORKDIR /
+COPY --from=builder /go/src/github.com/openshift/deadmanssnitch-operator/build/_output/bin/${OPERATOR_BIN} /usr/local/bin/${OPERATOR_BIN}
+LABEL io.openshift.managed.name="deadmanssnitch-operator" \
+      io.openshift.managed.description="Operator to manage Dead Man Snitches"
+
+# Run directly as the hardened base non-root user; deployments may override command.
+ENTRYPOINT ["/usr/local/bin/deadmanssnitch-operator"]
