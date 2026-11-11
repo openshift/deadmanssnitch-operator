@@ -4,7 +4,7 @@ WORKDIR /go/src/github.com/openshift/deadmanssnitch-operator
 ENV GOFLAGS=""
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1794186349
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.9-1793829856
 ENV OPERATOR_BIN=deadmanssnitch-operator
 
 WORKDIR /root/
