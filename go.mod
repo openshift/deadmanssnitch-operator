@@ -5,18 +5,18 @@ go 1.25.4
 require (
 	github.com/go-logr/logr v1.4.3
 	// go get -u github.com/openshift/api@relase-4.13
-	github.com/openshift/api v0.0.0-20230228142948-d170fcdc0fa6
-	github.com/openshift/hive/apis v0.0.0-20230314202213-17cb22fc3d7c
+	github.com/openshift/api 950d0a970cb7
+	github.com/openshift/hive/apis v0.0.0-20261109202205-5fdda9c46bb9
 	github.com/openshift/operator-custom-metrics v0.5.1
 	github.com/operator-framework/operator-lib v0.11.0
-	github.com/prometheus/client_golang v1.18.0
+	github.com/prometheus/client_golang v1.24.1
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.26.0
-	k8s.io/api v0.26.13
-	k8s.io/apimachinery v0.26.13
-	k8s.io/client-go v0.26.13
-	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
-	sigs.k8s.io/controller-runtime v0.14.7
+	k8s.io/api v0.35.10
+	k8s.io/apimachinery v0.35.10
+	k8s.io/client-go v0.35.10
+	k8s.io/kube-openapi v0.0.0-20261104182252-5bee61fc5225
+	sigs.k8s.io/controller-runtime v0.23.3
 )
 
 require (
